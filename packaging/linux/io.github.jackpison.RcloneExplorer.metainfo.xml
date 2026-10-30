@@ -19,7 +19,6 @@
   </description>
   <launchable type="desktop-id">rclone-explorer.desktop</launchable>
   <url type="homepage">https://jackpison.github.io/RcloneExplorer/</url>
-  <url type="vcs-browser">https://github.com/Jackpison/RcloneExplorer</url>
   <developer id="io.github.jackpison"><name>Jackpison</name></developer>
   <screenshots>
     <screenshot type="default">
