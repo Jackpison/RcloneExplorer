@@ -313,6 +313,18 @@ jobs:
             dist/*.zsync
             dist/SHA256SUMS.txt
 
+      # winget manifests for this release (submitted to microsoft/winget-pkgs by hand)
+      - name: winget manifests
+        run: |
+          set -euo pipefail
+          sha=$(grep -- '-windows-x64.zip$' dist/SHA256SUMS.txt | cut -d' ' -f1)
+          python3 packaging/winget/make_manifests.py "$VERSION" "$sha" winget
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: winget-manifests-${{ env.VERSION }}
+          path: winget
+
       # The repository doubles as a Scoop bucket:
       #   scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer
       - name: Update Scoop manifest
