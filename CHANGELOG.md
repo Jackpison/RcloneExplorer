@@ -4,9 +4,12 @@
 
 ### Added
 -   **Linux: the AppImage can update itself with AppImageUpdate** and similar tools. It now carries update information, and each release includes a matching `.zsync` file
+-   Linux: richer AppStream metadata (description, screenshots, version), which software centres and the AppImage catalog show
 
 ### Changed
 -   Release notes no longer end with an invitation to send feedback
+-   The user guide is updated for Linux, Saved tasks sorting, the new status bar and the new confirmation prompts, with fresh screenshots
+-   `LICENSE` is now recognised as MIT by GitHub
 
 ## [5.3.0] - 2026-10-10
 
