@@ -62,6 +62,10 @@ public:
   void rename(const QModelIndex &index, const QString &name);
   bool isTopLevel(const QModelIndex &index) const;
   bool isFolder(const QModelIndex &index) const;
+  // True for a folder whose contents have not been requested yet. rowCount()
+  // would start listing it, so code that only wants to look at what is
+  // already there (such as the filter) must check this first.
+  bool needsLoad(const QModelIndex &index) const;
 
   QModelIndex addRoot(const QString &name, const QString &path);
 
@@ -90,6 +94,15 @@ signals:
 
 private:
   Item *mRoot;
+
+  // At most a few `rclone lsjson` runs at once; the rest wait their turn.
+  // A big tree (or a provider with rate limits, such as Google Drive) must
+  // not be hit by dozens of listings in parallel.
+  static constexpr int kMaxParallelLoads = 4;
+  int mActiveLoads = 0;
+  QList<std::function<void()>> mPendingLoads;
+  void startOrQueueLoad(const std::function<void()> &start);
+  void loadFinished();
 
   QString mRemote;
 

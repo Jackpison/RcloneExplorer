@@ -14,6 +14,10 @@ private slots:
     QCOMPARE(splitArguments("--a 1 --name \"my drive\""),
              QStringList({"--a", "1", "--name", "my drive"}));
   }
+  void splitKeepsWindowsPaths() {
+    QCOMPARE(splitArguments("--log-file \"C:\\Users\\me\\rclone log.txt\""),
+             QStringList({"--log-file", "C:\\Users\\me\\rclone log.txt"}));
+  }
   void splitIgnoresExtraSpaces() {
     QCOMPARE(splitArguments("  --a   --b  "), QStringList({"--a", "--b"}));
     QVERIFY(splitArguments("   ").isEmpty());

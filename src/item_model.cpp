@@ -191,6 +191,30 @@ bool ItemModel::isFolder(const QModelIndex &index) const {
   return get(index)->isFolder;
 }
 
+bool ItemModel::needsLoad(const QModelIndex &index) const {
+  const Item *item = get(index);
+  return item->isFolder && item->state == Item::Unknown;
+}
+
+void ItemModel::startOrQueueLoad(const std::function<void()> &start) {
+  if (mActiveLoads < kMaxParallelLoads) {
+    ++mActiveLoads;
+    start();
+  } else {
+    mPendingLoads.append(start);
+  }
+}
+
+void ItemModel::loadFinished() {
+  if (mActiveLoads > 0) {
+    --mActiveLoads;
+  }
+  while (mActiveLoads < kMaxParallelLoads && !mPendingLoads.isEmpty()) {
+    ++mActiveLoads;
+    mPendingLoads.takeFirst()();
+  }
+}
+
 QModelIndex ItemModel::addRoot(const QString &name, const QString &path) {
   emit layoutAboutToBeChanged();
 
@@ -444,7 +468,16 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
     emit dataChanged(loadingIndex, loadingIndex, QVector<int>{Qt::DisplayRole});
   });
 
+  auto accounted = std::make_shared<bool>(false);
+  auto release = [=, this]() {
+    if (!*accounted) {
+      *accounted = true;
+      loadFinished();
+    }
+  };
+
   auto rcloneFinished = [=, this]() {
+    release();
     ls->deleteLater();
     bool parsed = false;
     const auto entries = RcloneOutput::parseLsJson(ls->readAllStandardOutput(), &parsed);
@@ -470,10 +503,37 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
     }
 
     QHash<QString, int> existing;
+    int shown = 0;
     for (int i = 0; i < parent->childs.count(); i++) {
       if (parent->childs[i] != loading) {
         existing.insert(parent->childs[i]->name, i);
+        ++shown;
       }
+    }
+
+    // Some providers (Google Drive) allow several items with the same name in
+    // one folder. Matching by name cannot tell them apart, and every reload
+    // used to add another copy of the extra ones. When names are not unique,
+    // start from scratch for this folder instead.
+    bool ambiguous = existing.size() != shown;
+    QSet<QString> names;
+    for (const Item *item : std::as_const(*cache)) {
+      if (names.contains(item->name)) {
+        ambiguous = true;
+        break;
+      }
+      names.insert(item->name);
+    }
+    if (ambiguous) {
+      for (int i = 0; i < parent->childs.count(); i++) {
+        if (parent->childs[i] != loading) {
+          emit beginRemoveRows(parentIndex, i, i);
+          delete parent->childs.takeAt(i);
+          emit endRemoveRows();
+          i--;
+        }
+      }
+      existing.clear();
     }
 
     QVector<Item *> todo;
@@ -540,14 +600,23 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
   emit endInsertRows();
 
   timer->start(100);
-  UseRclonePassword(ls);
-  ls->setProcessChannelMode(QProcess::SeparateChannels);
-  ls->start(GetRclone(),
-            QStringList() << "lsjson" << "--no-mimetype"
-                          << GetRcloneConf() << GetDriveSharedWithMe()
-                          << GetShowHidden() << GetDefaultRcloneOptionsList()
-                          << mRemote + ":" + parent->path.path(),
-            QIODevice::ReadOnly);
+  // a process that cannot even start never reports "finished"
+  QObject::connect(ls, &QProcess::errorOccurred, this,
+                   [=, this](QProcess::ProcessError e) {
+                     if (e == QProcess::FailedToStart) {
+                       release();
+                     }
+                   });
+  startOrQueueLoad([=, this]() {
+    UseRclonePassword(ls);
+    ls->setProcessChannelMode(QProcess::SeparateChannels);
+    ls->start(GetRclone(),
+              QStringList() << "lsjson" << "--no-mimetype"
+                            << GetRcloneConf() << GetDriveSharedWithMe()
+                            << GetShowHidden() << GetDefaultRcloneOptionsList()
+                            << mRemote + ":" + parent->path.path(),
+              QIODevice::ReadOnly);
+  });
 }
 
 void ItemModel::sortRecursive(Item *item, const ItemSorter &sorter) {

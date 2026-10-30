@@ -106,12 +106,24 @@ void MountWidget::cancel() {
                    p, &QObject::deleteLater);
   p->start(GetRclone(), args, QIODevice::ReadOnly);
 #else
-  QProcess::startDetached("fusermount", QStringList()
-                                            << "-u" << ui.folder->text());
+  // FUSE 3 systems (what the mount feature needs) only ship fusermount3
+  const QString fusermount =
+      QStandardPaths::findExecutable("fusermount3").isEmpty()
+          ? QStringLiteral("fusermount")
+          : QStringLiteral("fusermount3");
+  QProcess::startDetached(fusermount, QStringList()
+                                          << "-u" << ui.folder->text());
 #endif
 #endif
 
-  mProcess->waitForFinished();
+  // Do not freeze the window if the unmount is held up (a program still
+  // uses the mount): ask rclone to stop, which unmounts as well.
+  if (!mProcess->waitForFinished(8000)) {
+    mProcess->terminate();
+    if (!mProcess->waitForFinished(5000)) {
+      mProcess->kill();
+    }
+  }
 
   emit closed();
 }

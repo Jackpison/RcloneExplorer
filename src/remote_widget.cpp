@@ -1099,20 +1099,39 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
                      updateBreadcrumbs(model, remote);
                      applyFilter(model);
                    });
-  QObject::connect(mFilter, &QLineEdit::textChanged, this,
+  // Typing and model updates (a big folder arriving, sorting) can come in
+  // bursts: apply the filter once things settle instead of for each of them.
+  mFilterTimer = new QTimer(this);
+  mFilterTimer->setSingleShot(true);
+  mFilterTimer->setInterval(150);
+  QObject::connect(mFilterTimer, &QTimer::timeout, this,
                    [this, model]() { applyFilter(model); });
+  QObject::connect(mFilter, &QLineEdit::textChanged, this,
+                   [this, model](const QString &text) {
+                     if (text.trimmed().isEmpty()) {
+                       mFilterTimer->stop();
+                       applyFilter(model); // showing everything again is instant
+                     } else {
+                       mFilterTimer->start();
+                     }
+                   });
   QObject::connect(model, &QAbstractItemModel::rowsInserted, this,
-                   [this, model](const QModelIndex &parent) {
+                   [this](const QModelIndex &parent) {
                      if (!mFilter->text().isEmpty() && parent == mFilterFolder) {
-                       applyFilter(model);
+                       mFilterTimer->start();
                      }
                    });
-  QObject::connect(model, &QAbstractItemModel::layoutChanged, this,
-                   [this, model]() {
-                     if (!mFilter->text().isEmpty()) {
-                       applyFilter(model);
-                     }
-                   });
+  // (sorting another folder, e.g. one loading in the background, is none of
+  // our business)
+  QObject::connect(
+      model, &QAbstractItemModel::layoutChanged, this,
+      [this](const QList<QPersistentModelIndex> &parents,
+             QAbstractItemModel::LayoutChangeHint) {
+        if (!mFilter->text().isEmpty() &&
+            (parents.isEmpty() || parents.contains(mFilterFolder))) {
+          mFilterTimer->start();
+        }
+      });
 
   auto *find = new QShortcut(QKeySequence::Find, this);
   QObject::connect(find, &QShortcut::activated, this, [this]() {
@@ -1288,40 +1307,65 @@ void RemoteWidget::updateBreadcrumbs(ItemModel *model, const QString &remote) {
 }
 
 void RemoteWidget::applyFilter(ItemModel *model) {
+  // Changing which rows are hidden makes the views (and, through the model,
+  // sorting) emit signals that lead back here: never run inside ourselves.
+  if (mApplyingFilter) {
+    return;
+  }
+  mApplyingFilter = true;
+  struct Done {
+    bool &flag;
+    ~Done() { flag = false; }
+  } done{mApplyingFilter};
+
   // the folder being filtered: the current folder, or a file's parent
   QModelIndex folder = ui.tree->currentIndex().siblingAtColumn(0);
   if (folder.isValid() && !model->isFolder(folder)) {
     folder = folder.parent();
   }
 
+  auto setHidden = [&](const QModelIndex &parent, int row, bool hide) {
+    // only touch rows that change: every call makes the view re-layout
+    if (ui.tree->isRowHidden(row, parent) != hide) {
+      ui.tree->setRowHidden(row, parent, hide);
+    }
+    if (mGrid && mGrid->rootIndex() == parent && mGrid->isRowHidden(row) != hide) {
+      mGrid->setRowHidden(row, hide);
+    }
+  };
+
   // un-hide everything in the previously filtered folder
-  if (mFilterFolder.isValid() && mFilterFolder != folder) {
-    for (int r = 0; r < model->rowCount(mFilterFolder); ++r) {
-      ui.tree->setRowHidden(r, mFilterFolder, false);
-      if (mGrid && mGrid->rootIndex() == mFilterFolder) {
-        mGrid->setRowHidden(r, false);
-      }
+  if (mFilterFolder.isValid() && mFilterFolder != folder &&
+      !model->needsLoad(mFilterFolder)) {
+    const QModelIndex previous = mFilterFolder;
+    for (int r = 0; r < model->rowCount(previous); ++r) {
+      setHidden(previous, r, false);
     }
   }
   mFilterFolder = folder;
   if (!folder.isValid()) {
     return;
   }
+  // rowCount() would start listing a folder that was never opened. Filtering
+  // must only ever look at what is already there; when the folder arrives the
+  // model's rowsInserted brings us back.
+  if (model->needsLoad(folder)) {
+    return;
+  }
 
   const QString text = mFilter->text().trimmed();
-  const QModelIndex current = ui.tree->currentIndex();
+  const QModelIndex current = ui.tree->currentIndex().siblingAtColumn(0);
+  ui.tree->setUpdatesEnabled(false);
   for (int r = 0; r < model->rowCount(folder); ++r) {
     const QModelIndex child = model->index(r, 0, folder);
     const QString name = model->data(child, Qt::DisplayRole).toString();
-    const bool hide = !text.isEmpty() && child != current.siblingAtColumn(0) &&
+    const bool hide = !text.isEmpty() && child != current &&
                       !name.contains(text, Qt::CaseInsensitive) &&
                       !model->isLoading(child);
-    ui.tree->setRowHidden(r, folder, hide);
-    if (mGrid && mGrid->rootIndex() == folder) {
-      mGrid->setRowHidden(r, hide);
-    }
+    setHidden(folder, r, hide);
   }
-  if (!text.isEmpty()) {
+  if (!text.isEmpty() && !ui.tree->isExpanded(folder)) {
     ui.tree->expand(folder);
   }
+  ui.tree->setUpdatesEnabled(true);
 }

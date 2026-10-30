@@ -28,6 +28,8 @@ private:
   Ui::RemoteWidget ui;
   QLabel *mTypeLabel = nullptr;
   QLineEdit *mFilter = nullptr;
+  QTimer *mFilterTimer = nullptr; // coalesces typing and model updates
+  bool mApplyingFilter = false;   // applyFilter must not re-enter itself
   QToolButton *mUp = nullptr;
   QWidget *mCrumbs = nullptr;
   QPersistentModelIndex mFilterFolder;

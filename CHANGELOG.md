@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.3.6] - 2026-10-30
+
+### Fixed
+-   **"Filter this folder" could make the app and rclone run wild on big Google Drive folders** (issue #1). The filter now only looks at folders that are already loaded and never starts listing a folder on its own; it waits a moment while you type instead of re-filtering on every key; it ignores changes in other folders that are loading in the background; and it only touches rows whose visibility actually changes. Filtering 8,000 items takes a few hundredths of a second
+-   **Browsing a huge tree can no longer start dozens of rclone listings at once.** At most four folders are listed in parallel and the rest wait their turn, which also keeps rate-limited providers such as Google Drive happy
+-   **Google Drive: folders with several files of the same name grew extra entries each time they were refreshed.** Such folders are now reloaded from scratch instead of being matched by name
+-   **Linux: unmounting did nothing on systems that only have FUSE 3** (`fusermount3`), leaving the folder mounted while the app showed it as closed. Rclone Explorer now uses `fusermount3` when it is there
+-   Unmounting a drive that a program still holds open no longer freezes the window for half a minute: after a few seconds rclone is asked to stop, which unmounts it too
+
+### Changed
+-   A listing that cannot be started (for example because rclone is missing) no longer holds up other listings
+
 ## [5.3.5] - 2026-10-30
 
 ### Added
