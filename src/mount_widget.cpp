@@ -92,18 +92,18 @@ void MountWidget::cancel() {
   QProcess *p = new QProcess();
   QStringList args;
   args << "rc";
-  // requires rlone version at least 1.50
+  args << "--url" << QString("http://127.0.0.1:%1/").arg(mRcPort);
+  if (!mRcUser.isEmpty()) {
+    args << "--user" << mRcUser << "--pass" << mRcPass;
+  }
+  // requires rclone version at least 1.50
   args << "core/quit";
 
-  args << "--rc-addr";
-  QString folder = ui.folder->text();
-
-  int port_offset = folder[0].toLatin1();
-  unsigned short int rclone_rc_port_base = 19000;
-  unsigned short int rclone_rc_port = rclone_rc_port_base + port_offset;
-  args << "localhost:" + QVariant(rclone_rc_port).toString();
-
   UseRclonePassword(p);
+  QObject::connect(p,
+                   static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(
+                       &QProcess::finished),
+                   p, &QObject::deleteLater);
   p->start(GetRclone(), args, QIODevice::ReadOnly);
 #else
   QProcess::startDetached("fusermount", QStringList()

@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.3.5] - 2026-10-30
+
+### Added
+-   **Scheduled tasks.** Select a saved task and click **Schedule…** to run it by itself: every N minutes or hours, every day at a set time, or on chosen weekdays. The schedule shows next to the task name. Tasks run while Rclone Explorer is open, including minimised to the tray; a task is not started again while its previous run is still going, and times missed while the app was closed are skipped
+-   **Mount dialog.** Mounting now asks for the mount point (a free drive letter is suggested on Windows), the **cache mode**, read-only, and on Windows the drive name. The cache mode defaults to *Writes*, which lets programs save files to a mount (without one, many programs cannot save to a mount). Choices are remembered. A cache mode or read-only option set in Preferences still takes priority
+-   **Tools menu** (More options, ⋯) on every remote:
+    -   **Compare with…** checks that two folders hold the same files (`rclone check`), optionally one-way or by size only
+    -   **Copy to another remote…** copies or moves between two places, server-side where the provider allows it
+    -   **Two-way sync…** (`rclone bisync`) keeps two folders matching in both directions, with a dry run on by default and a *First run* option
+    -   **Remove duplicates…** keeps the newest, oldest, largest or smallest copy of files that share a name (Google Drive), or renames them
+    -   **Empty trash / clean up…** empties the provider's trash
+    All of them run as jobs with progress and output like other transfers, and ask first when they delete anything
+
+### Fixed
+-   **Option fields now understand quotes.** The extra options for transfers and file-list exports, the default rclone options and the mount options were split at every space, so a value containing a space (for example `--exclude "My Folder/**"`) broke the command, and two spaces in a row passed an empty argument to rclone. Quotes now keep a value together
+-   **Windows: a mounted drive can no longer be controlled by other programs.** The control channel rclone uses to unmount a drive now requires a random user name and password, is only reachable from this PC, and the password is passed to rclone in its environment instead of on the command line
+
+### Changed
+-   Mounted drives and unmounting no longer show a bare folder or text prompt: all choices are in one dialog
+-   More unit tests: option splitting, every rclone command built by the Tools menu, mount options and schedules
+
 ## [5.3.1] - 2026-10-30
 
 ### Added

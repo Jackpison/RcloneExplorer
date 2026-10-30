@@ -347,13 +347,7 @@ QStringList GetDefaultRcloneOptionsList() {
   auto settings = GetSettings();
   QString defaultRcloneOptions =
       settings->value("Settings/defaultRcloneOptions").toString();
-  QStringList defaultRcloneOptionsList;
-  if (!defaultRcloneOptions.isEmpty()) {
-    for (auto arg : defaultRcloneOptions.split(' ')) {
-      defaultRcloneOptionsList << arg;
-    }
-  }
-  return defaultRcloneOptionsList;
+  return splitArguments(defaultRcloneOptions);
 }
 
 QStringList GetShowHidden() {

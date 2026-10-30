@@ -1,4 +1,7 @@
 #include "remote_widget.h"
+#include "mount_dialog.h"
+#include "rclone_commands.h"
+#include "tool_dialog.h"
 #include "theme.h"
 #include "rclone_output.h"
 #include "export_dialog.h"
@@ -51,7 +54,7 @@ QString root = isLocal ? "/" : QString();
   ItemModel *model = new ItemModel(remote, this);
   ui.tree->setModel(model);
   QTimer::singleShot(0, ui.tree, SLOT(setFocus()));
-  buildFluentUi(model, remote);
+  buildFluentUi(model, remote, isLocal);
 
   QObject::connect(model, &QAbstractItemModel::layoutChanged, this, [=, this]() {
     ui.tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
@@ -305,19 +308,12 @@ QString root = isLocal ? "/" : QString();
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
 
-#if defined(Q_OS_WIN32)
-    QString folder =
-        QInputDialog::getText(this, "Mount",
-                              QString("(Make sure you have WinFsp-FUSE "
-                                      "installed)\n\nDrive to mount %1 to")
-                                  .arg(remote),
-                              QLineEdit::Normal, "Z:");
-#else
-        QString folder = QFileDialog::getExistingDirectory(this, QString("Mount %1").arg(remote));
-#endif
-
-    if (!folder.isEmpty()) {
-      emit addMount(remote + ":" + path, folder);
+    MountDialog dialog(remote + ":" + path, this);
+    if (dialog.exec() == QDialog::Accepted) {
+      emit addMount(remote + ":" + path, dialog.target(),
+                    RcloneCommands::mountArgs(
+                        dialog.options(),
+                        settings->value("Settings/mount").toString()));
     }
   });
 
@@ -684,7 +680,8 @@ void RemoteWidget::setRemoteType(const QString &type) {
   }
 }
 
-void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote) {
+void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
+                                 bool isLocal) {
   auto *v = qobject_cast<QVBoxLayout *>(ui.layout->layout());
   v->setContentsMargins(24, 20, 24, 8);
   v->setSpacing(8);
@@ -807,6 +804,67 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote) {
   moreMenu->addAction(ui.export_);
   moreMenu->addSeparator();
   moreMenu->addAction(ui.link);
+
+  // ---- Tools: compare, remove duplicates, copy to, two-way sync, clean up.
+  // The actions belong to the menu (not to this widget) so the selection
+  // handler that disables the toolbar actions leaves them alone.
+  auto *tools = moreMenu->addMenu(Theme::icon("tasks"), tr("Tools"));
+  auto selectedSpec = [this, model, remote]() {
+    const auto rows = ui.tree->selectionModel()->selectedRows();
+    const QString path =
+        rows.isEmpty() ? QString() : model->path(rows.front()).path();
+    return remote + ":" + path;
+  };
+  auto runTool = [this, selectedSpec](ToolDialog::Tool tool) {
+    const QString spec = selectedSpec();
+    ToolDialog dialog(tool, spec, this);
+    if (dialog.exec() == QDialog::Accepted) {
+      emit addTransfer(dialog.message(), dialog.source(), dialog.dest(),
+                       dialog.args() + GetDefaultRcloneOptionsList());
+    }
+  };
+  auto *compare = tools->addAction(tr("Compare with…"));
+  QObject::connect(compare, &QAction::triggered, this,
+                   [=]() { runTool(ToolDialog::Compare); });
+  auto *copyTo = tools->addAction(tr("Copy to another remote…"));
+  QObject::connect(copyTo, &QAction::triggered, this,
+                   [=]() { runTool(ToolDialog::CopyTo); });
+  auto *bisync = tools->addAction(tr("Two-way sync…"));
+  QObject::connect(bisync, &QAction::triggered, this,
+                   [=]() { runTool(ToolDialog::Bisync); });
+  if (!isLocal) {
+    tools->addSeparator();
+    auto *dedupe = tools->addAction(tr("Remove duplicates…"));
+    QObject::connect(dedupe, &QAction::triggered, this,
+                     [=]() { runTool(ToolDialog::Dedupe); });
+    auto *cleanup = tools->addAction(tr("Empty trash / clean up…"));
+    QObject::connect(cleanup, &QAction::triggered, this, [=, this]() {
+      if (Theme::confirm(this, tr("Clean up"),
+                         tr("Clean up %1?").arg(remote),
+                         tr("Permanently deletes what the provider keeps in "
+                            "its trash or as old versions. This cannot be "
+                            "undone."),
+                         tr("Clean up"), tr("Cancel"))) {
+        emit addTransfer(tr("Clean up %1").arg(remote), remote + ":",
+                         QString(),
+                         RcloneCommands::cleanup(remote + ":") +
+                             GetDefaultRcloneOptionsList());
+      }
+    });
+  }
+  // compare / copy / sync need something to work on
+  QObject::connect(moreMenu, &QMenu::aboutToShow, this,
+                   [=, this]() {
+                     const bool any =
+                         !ui.tree->selectionModel()->selectedRows().isEmpty();
+                     const bool folder =
+                         any && model->isFolder(
+                                    ui.tree->selectionModel()->selectedRows()
+                                        .front());
+                     for (QAction *a : {compare, copyTo, bisync}) {
+                       a->setEnabled(folder);
+                     }
+                   });
   if (sharedAvailable) {
     moreMenu->addSeparator();
     auto *shared = moreMenu->addAction(tr("Show files shared with me"));

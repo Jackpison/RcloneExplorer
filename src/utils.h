@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.h"
+#include "command_args.h"
 
 std::unique_ptr<QSettings> GetSettings();
 

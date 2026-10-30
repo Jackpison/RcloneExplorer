@@ -525,6 +525,16 @@ void MainWindow::buildShell() {
       bar->addStretch(1);
     }
     ui.buttonDryrunTask->setText(tr("Dry run"));
+    mButtonSchedule = new QPushButton(tr("Schedule…"));
+    mButtonSchedule->setIcon(Theme::icon("tasks"));
+    mButtonSchedule->setEnabled(false);
+    mButtonSchedule->setToolTip(
+        tr("Run the selected task by itself on a schedule"));
+    if (auto *bar = qobject_cast<QHBoxLayout *>(ui.tasksActionBar->layout())) {
+      bar->insertWidget(bar->indexOf(ui.buttonEditTask) + 1, mButtonSchedule);
+    }
+    QObject::connect(mButtonSchedule, &QPushButton::clicked, this,
+                     [this]() { editSelectedSchedule(); });
 
     ui.buttonRunTask->setProperty("accent", true);
     // already polished by the time we get here, so restyle it

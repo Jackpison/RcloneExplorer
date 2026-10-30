@@ -18,7 +18,8 @@ public:
 signals:
   void addTransfer(const QString &message, const QString &source,
                    const QString &remote, const QStringList &args);
-  void addMount(const QString &remote, const QString &folder);
+  void addMount(const QString &remote, const QString &folder,
+                const QStringList &mountOptions);
   void addStream(const QString &remote, const QString &stream);
   void closeRequested();
   void newTabRequested();
@@ -44,7 +45,8 @@ private:
   void setIconView(bool icons, class ItemModel *model);
   void showFolderInGrid(const QModelIndex &folder, class ItemModel *model);
 
-  void buildFluentUi(class ItemModel *model, const QString &remote);
+  void buildFluentUi(class ItemModel *model, const QString &remote,
+                     bool isLocal);
   void updateBreadcrumbs(class ItemModel *model, const QString &remote);
   void applyFilter(class ItemModel *model);
 };

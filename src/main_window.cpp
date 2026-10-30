@@ -12,6 +12,7 @@
 #include "mount_widget.h"
 #include "preferences_dialog.h"
 #include "remote_widget.h"
+#include "schedule_dialog.h"
 #include "stream_widget.h"
 #include "transfer_dialog.h"
 #include "utils.h"
@@ -242,6 +243,9 @@ MainWindow::MainWindow() {
                      ui.buttonEditTask->setEnabled(current != nullptr);
                      ui.buttonRunTask->setEnabled(current != nullptr);
                      ui.buttonDryrunTask->setEnabled(current != nullptr);
+                     if (mButtonSchedule) {
+                       mButtonSchedule->setEnabled(current != nullptr);
+                     }
                    });
 
   QObject::connect(ui.buttonRunTask, &QPushButton::clicked, this, [=, this]() {
@@ -263,6 +267,13 @@ MainWindow::MainWindow() {
 
   QObject::connect(ui.buttonEditTask, &QPushButton::clicked, this,
                    [=, this]() { editSelectedTask(); });
+
+  loadSchedules();
+  mScheduleTimer = new QTimer(this);
+  mScheduleTimer->setInterval(20 * 1000);
+  QObject::connect(mScheduleTimer, &QTimer::timeout, this,
+                   &MainWindow::scheduleTick);
+  mScheduleTimer->start();
 
   QObject::connect(ui.buttonDeleteTask, &QPushButton::clicked, this, [=, this]() {
     JobOptionsListWidgetItem *item = static_cast<JobOptionsListWidgetItem *>(
@@ -772,12 +783,32 @@ void MainWindow::listTasks() {
     }
   }
 
+  // forget schedules of tasks that were deleted
+  {
+    QSet<QUuid> known;
+    for (JobOptions *jo : tasks) {
+      known.insert(jo->uniqueId);
+    }
+    const QList<QUuid> scheduled = mSchedules.keys();
+    for (const QUuid &id : scheduled) {
+      if (!known.contains(id)) {
+        GetSettings()->remove("Schedules/" + id.toString(QUuid::WithoutBraces));
+        mSchedules.remove(id);
+        mNextRun.remove(id);
+      }
+    }
+  }
+
   for (JobOptions *jo : tasks) {
+    const auto sched = mSchedules.constFind(jo->uniqueId);
+    const bool scheduled = sched != mSchedules.constEnd();
     JobOptionsListWidgetItem *item = new JobOptionsListWidgetItem(
         jo,
         jo->jobType == JobOptions::JobType::Download ? mDownloadIcon
                                                      : mUploadIcon,
-        jo->description);
+        scheduled ? QString("%1   ·   %2").arg(jo->description,
+                                               sched->describe())
+                  : jo->description);
     ui.tasksListWidget->addItem(item);
     if (!selected.isNull() && jo->uniqueId == selected) {
       ui.tasksListWidget->setCurrentItem(item);
@@ -785,18 +816,101 @@ void MainWindow::listTasks() {
   }
 }
 
-void MainWindow::runItem(JobOptionsListWidgetItem *item, bool dryrun) {
+JobWidget *MainWindow::runItem(JobOptionsListWidgetItem *item, bool dryrun) {
   if (item == nullptr)
-    return;
-  JobOptions *jo = item->GetData();
+    return nullptr;
+  return runTask(item->GetData(), dryrun);
+}
+
+JobWidget *MainWindow::runTask(JobOptions *jo, bool dryrun) {
   jo->dryRun = dryrun;
   QStringList args = jo->getOptions();
   // same wording as transfers started from the browser ("Copy /path")
   const QString mode = jo->operation == JobOptions::Move   ? QString("Move")
                        : jo->operation == JobOptions::Sync ? QString("Sync")
                                                            : QString("Copy");
-  addTransfer(QString("%1 %2").arg(mode).arg(jo->source), jo->source,
-              jo->dest, args);
+  return addTransfer(QString("%1 %2").arg(mode).arg(jo->source), jo->source,
+                     jo->dest, args);
+}
+
+void MainWindow::loadSchedules() {
+  mSchedules.clear();
+  mNextRun.clear();
+  auto settings = GetSettings();
+  settings->beginGroup("Schedules");
+  for (const QString &key : settings->childKeys()) {
+    const QUuid id(key);
+    const Schedule s = Schedule::parse(settings->value(key).toString());
+    if (!id.isNull() && s.enabled()) {
+      mSchedules.insert(id, s);
+    }
+  }
+  settings->endGroup();
+}
+
+void MainWindow::setSchedule(const QUuid &task, const Schedule &s) {
+  auto settings = GetSettings();
+  const QString key =
+      "Schedules/" + task.toString(QUuid::WithoutBraces);
+  if (s.enabled()) {
+    settings->setValue(key, s.serialize());
+    mSchedules.insert(task, s);
+  } else {
+    settings->remove(key);
+    mSchedules.remove(task);
+  }
+  mNextRun.remove(task);
+  listTasks();
+}
+
+void MainWindow::scheduleTick() {
+  if (mSchedules.isEmpty()) {
+    return;
+  }
+  const QDateTime now = QDateTime::currentDateTime();
+  const QList<JobOptions *> tasks = ListOfJobOptions::getInstance()->getTasks();
+  for (JobOptions *jo : tasks) {
+    const QUuid id = jo->uniqueId;
+    const auto sched = mSchedules.constFind(id);
+    if (sched == mSchedules.constEnd()) {
+      continue;
+    }
+    auto next = mNextRun.find(id);
+    if (next == mNextRun.end()) {
+      mNextRun.insert(id, sched->next(now));
+      continue;
+    }
+    if (now < next.value()) {
+      continue;
+    }
+    mNextRun[id] = sched->next(now);
+    if (mScheduledRunning.contains(id)) {
+      continue; // the previous run is not finished yet
+    }
+    if (JobWidget *w = runTask(jo, false)) {
+      mScheduledRunning.insert(id);
+      QObject::connect(w, &JobWidget::finished, this,
+                       [this, id]() { mScheduledRunning.remove(id); });
+      QObject::connect(w, &QObject::destroyed, this,
+                       [this, id]() { mScheduledRunning.remove(id); });
+      if (mSystemTray.isVisible()) {
+        mSystemTray.showMessage(tr("Scheduled task started"), jo->description);
+      }
+    }
+  }
+}
+
+void MainWindow::editSelectedSchedule() {
+  auto *item = static_cast<JobOptionsListWidgetItem *>(
+      ui.tasksListWidget->currentItem());
+  if (!item) {
+    return;
+  }
+  JobOptions *jo = item->GetData();
+  ScheduleDialog dialog(jo->description, mSchedules.value(jo->uniqueId), this);
+  if (dialog.exec() == QDialog::Accepted) {
+    setSchedule(jo->uniqueId, dialog.schedule());
+  }
 }
 
 void MainWindow::editSelectedTask() {
@@ -819,8 +933,9 @@ void MainWindow::editSelectedTask() {
   // and the Save Task button closes it... so there is nothing more to do here
 }
 
-void MainWindow::addTransfer(const QString &message, const QString &source,
-                             const QString &dest, const QStringList &args) {
+JobWidget *MainWindow::addTransfer(const QString &message,
+                                   const QString &source, const QString &dest,
+                                   const QStringList &args) {
   QProcess *transfer = new QProcess(this);
   transfer->setProcessChannelMode(QProcess::MergedChannels);
 
@@ -868,9 +983,11 @@ void MainWindow::addTransfer(const QString &message, const QString &source,
 
   UseRclonePassword(transfer);
   transfer->start(GetRclone(), GetRcloneConf() + args, QIODevice::ReadOnly);
+  return widget;
 }
 
-void MainWindow::addMount(const QString &remote, const QString &folder) {
+void MainWindow::addMount(const QString &remote, const QString &folder,
+                          const QStringList &mountOptions) {
   QProcess *mount = new QProcess(this);
   mount->setProcessChannelMode(QProcess::MergedChannels);
 
@@ -907,22 +1024,30 @@ void MainWindow::addMount(const QString &remote, const QString &folder) {
   setJobsTabText(QString("Jobs (%1)").arg(++mJobCount));
 
   auto settings = GetSettings();
-  QString opt = settings->value("Settings/mount").toString();
   bool driveShared = settings->value("Settings/driveShared").toBool();
 
   QStringList args;
   args << "mount";
 
-#if defined(Q_OS_WIN32)
-  args << "--rc";
-  args << "--rc-addr";
+  UseRclonePassword(mount);
 
-  // calculate remote control interface port based on mount drive letter
-  // this way every mount will have unique port assigned
-  int port_offset = folder[0].toLatin1();
-  unsigned short int rclone_rc_port_base = 19000;
-  unsigned short int rclone_rc_port = rclone_rc_port_base + port_offset;
-  args << "localhost:" + QVariant(rclone_rc_port).toString();
+#if defined(Q_OS_WIN32)
+  // The remote-control server is how a WinFsp drive is unmounted. Its port
+  // follows the drive letter (one per mount) and it is protected by a random
+  // user and password, so other programs on this PC cannot control the mount.
+  // The credentials go to rclone in its environment, not on the command line.
+  const int rcPort = 19000 + folder[0].toLatin1();
+  const QString rcUser = QStringLiteral("rclone-explorer");
+  const QString rcPass = QUuid::createUuid().toString(QUuid::WithoutBraces) +
+                         QUuid::createUuid().toString(QUuid::WithoutBraces);
+  widget->setRemoteControl(rcPort, rcUser, rcPass);
+  QProcessEnvironment env = mount->processEnvironment().isEmpty()
+                                ? QProcessEnvironment::systemEnvironment()
+                                : mount->processEnvironment();
+  env.insert("RCLONE_RC_USER", rcUser);
+  env.insert("RCLONE_RC_PASS", rcPass);
+  mount->setProcessEnvironment(env);
+  args << "--rc" << "--rc-addr" << QString("127.0.0.1:%1").arg(rcPort);
 #endif
 
   // for google drive "shared with me" without --read-only writes go created in
@@ -939,12 +1064,9 @@ void MainWindow::addMount(const QString &remote, const QString &folder) {
   //       args << "writes";
 
   args.append(GetRcloneConf());
-  if (!opt.isEmpty()) {
-    args.append(opt.split(' '));
-  }
+  args.append(mountOptions);
   args << remote << folder;
 
-  UseRclonePassword(mount);
   mount->start(GetRclone(), args, QIODevice::ReadOnly);
 }
 

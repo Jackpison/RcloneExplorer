@@ -11,6 +11,14 @@ public:
               QWidget *parent = nullptr);
   ~MountWidget();
 
+  // Windows: how to reach this mount's authenticated remote-control server
+  // so it can be asked to quit (the only clean way to unmount a WinFsp drive).
+  void setRemoteControl(int port, const QString &user, const QString &pass) {
+    mRcPort = port;
+    mRcUser = user;
+    mRcPass = pass;
+  }
+
 public slots:
   void cancel();
 
@@ -23,4 +31,7 @@ private:
 
   bool mRunning = true;
   QProcess *mProcess;
+  int mRcPort = 0;
+  QString mRcUser;
+  QString mRcPass;
 };

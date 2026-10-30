@@ -1,6 +1,7 @@
 #pragma once
 
 #include "job_options.h"
+#include "schedule.h"
 #include "pch.h"
 
 class RcloneUpdater;
@@ -21,9 +22,10 @@ private slots:
   void rcloneListRemotes();
   void listTasks();
 
-  void addTransfer(const QString &message, const QString &source,
-                   const QString &dest, const QStringList &args);
-  void addMount(const QString &remote, const QString &folder);
+  JobWidget *addTransfer(const QString &message, const QString &source,
+                         const QString &dest, const QStringList &args);
+  void addMount(const QString &remote, const QString &folder,
+                const QStringList &mountOptions);
   void addStream(const QString &remote, const QString &stream);
 
 private:
@@ -61,8 +63,21 @@ private:
 
   void addEmptyJobsMessage();
 
-  void runItem(JobOptionsListWidgetItem *item, bool dryrun = false);
+  JobWidget *runItem(JobOptionsListWidgetItem *item, bool dryrun = false);
   void editSelectedTask();
+  JobWidget *runTask(JobOptions *jo, bool dryrun);
+
+  // Scheduled tasks (see schedule.h): a timer checks once in a while whether
+  // a task is due. Schedules are kept in the settings, keyed by task id.
+  QTimer *mScheduleTimer = nullptr;
+  QHash<QUuid, Schedule> mSchedules;
+  QHash<QUuid, QDateTime> mNextRun;
+  QSet<QUuid> mScheduledRunning; // still running: do not start it again
+  QPushButton *mButtonSchedule = nullptr;
+  void loadSchedules();
+  void setSchedule(const QUuid &task, const Schedule &s);
+  void scheduleTick();
+  void editSelectedSchedule();
   QIcon mUploadIcon;
   QIcon mDownloadIcon;
 

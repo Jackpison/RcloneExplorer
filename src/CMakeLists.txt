@@ -10,6 +10,9 @@ set(SOURCES
   transfer_dialog.cpp transfer_dialog.h transfer_dialog.ui
   export_dialog.cpp export_dialog.h export_dialog.ui
   progress_dialog.cpp progress_dialog.h progress_dialog.ui
+  mount_dialog.cpp mount_dialog.h
+  tool_dialog.cpp tool_dialog.h
+  schedule_dialog.cpp schedule_dialog.h
   job_widget.cpp job_widget.h job_widget.ui
   mount_widget.cpp mount_widget.h mount_widget.ui
   stream_widget.cpp stream_widget.h stream_widget.ui
@@ -20,6 +23,9 @@ set(SOURCES
   rclone_updater.cpp rclone_updater.h
   theme.cpp theme.h
   utils.cpp utils.h
+  command_args.h
+  rclone_commands.cpp rclone_commands.h
+  schedule.cpp schedule.h
   job_options.cpp job_options.h
   list_of_job_options.cpp list_of_job_options.h
   pch.h
@@ -115,5 +121,11 @@ if(RB_BUILD_TESTS)
     target_link_libraries(test_natural_sort PRIVATE Qt::Core Qt::Test)
     set_target_properties(test_natural_sort PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     add_test(NAME natural_sort COMMAND test_natural_sort)
+
+    add_executable(test_commands ../tests/test_commands.cpp rclone_commands.cpp rclone_commands.h schedule.cpp schedule.h command_args.h)
+    target_include_directories(test_commands PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(test_commands PRIVATE Qt::Core Qt::Test)
+    set_target_properties(test_commands PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    add_test(NAME commands COMMAND test_commands)
   endif()
 endif()

@@ -134,9 +134,7 @@ QStringList JobOptions::getOptions() const {
   }
 
   if (!extra.isEmpty()) {
-    for (auto arg : extra.split(' ')) {
-      list << arg;
-    }
+    list << splitArguments(extra);
   }
 
   if (DriveSharedWithMe) {
