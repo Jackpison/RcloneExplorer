@@ -312,3 +312,21 @@ jobs:
             dist/*.AppImage
             dist/*.zsync
             dist/SHA256SUMS.txt
+
+      # The repository doubles as a Scoop bucket:
+      #   scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer
+      - name: Update Scoop manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(grep -- '-windows-x64.zip$' dist/SHA256SUMS.txt | cut -d' ' -f1)
+          git fetch --depth=1 origin main
+          git checkout -B main FETCH_HEAD
+          python3 packaging/scoop/make_manifest.py "$VERSION" "$sha"
+          git add bucket/rclone-explorer.json
+          if git diff --cached --quiet; then echo "manifest unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Scoop: rclone-explorer $VERSION [skip ci]"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" main
