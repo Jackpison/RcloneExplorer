@@ -1,6 +1,11 @@
 #include "utils.h"
 #include "legacy_ini.h"
 
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+
 static QString gRclone;
 static QString gRcloneConf;
 static QString gRclonePassword;
@@ -109,10 +114,74 @@ bool IsPortableMode() {
   //  return QFileInfo(ini).exists();
 }
 
+namespace {
+
+// Portable ini, written in place.
+//
+// QSettings saves an ini by writing a new file and renaming it over the old
+// one. That breaks a hard-linked ini, which is how Scoop keeps settings across
+// updates: the app would keep working, but every change after the install
+// would be lost on the next update. So QSettings works on a private copy in the
+// temp folder, and whenever a settings object is done, the copy is written back
+// into the real ini in place (same file, only when something changed). The ini
+// format itself is still QSettings' own.
+
+QString ShadowIniPath(const QString &ini) {
+  const QByteArray id =
+      QCryptographicHash::hash(QFileInfo(ini).absoluteFilePath().toUtf8(), QCryptographicHash::Sha1)
+          .toHex()
+          .left(16);
+  return QDir(QDir::tempPath()).filePath("rclone-explorer-settings-" + QString::fromLatin1(id) + ".ini");
+}
+
+QByteArray ReadAll(const QString &path) {
+  QFile f(path);
+  return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+}
+
+// Overwrites `to` with the bytes of `from` without replacing the file itself.
+void WriteInPlace(const QString &from, const QString &to) {
+  const QByteArray data = ReadAll(from);
+  if (QFileInfo::exists(to) && ReadAll(to) == data) {
+    return;
+  }
+  QFile out(to);
+  if (out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    out.write(data);
+  }
+}
+
+class InPlaceIniSettings : public QSettings {
+public:
+  InPlaceIniSettings(const QString &shadow, const QString &ini)
+      : QSettings(shadow, QSettings::IniFormat), mIni(ini) {}
+  ~InPlaceIniSettings() override {
+    sync();
+    if (status() == QSettings::NoError) {
+      WriteInPlace(fileName(), mIni);
+    }
+  }
+
+private:
+  QString mIni;
+};
+
+} // namespace
+
 std::unique_ptr<QSettings> GetSettings() {
   if (IsPortableMode()) {
-    return std::unique_ptr<QSettings>(
-        new QSettings(GetIniFilename(), QSettings::IniFormat));
+    const QString ini = GetIniFilename();
+    const QString shadow = ShadowIniPath(ini);
+    static bool seeded = false; // refresh the copy from the real ini once per run
+    if (!seeded) {
+      seeded = true;
+      QFile::remove(shadow);
+      if (QFileInfo::exists(ini)) {
+        QFile::copy(ini, shadow);
+        QFile(shadow).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+      }
+    }
+    return std::unique_ptr<QSettings>(new InPlaceIniSettings(shadow, ini));
   }
   return std::unique_ptr<QSettings>(new QSettings);
 }
