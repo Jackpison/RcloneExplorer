@@ -43,6 +43,15 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 
 Mounting remotes as drive letters needs [WinFsp](https://winfsp.dev/).
 
+#### With Scoop
+
+```
+scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer
+scoop install rclone-explorer
+```
+
+Settings, saved tasks and the bundled rclone are kept when Scoop updates the app.
+
 ### Linux (x86_64)
 
 1. Download `RcloneExplorer-<version>-x86_64.AppImage` from the [latest release](../../releases/latest).
