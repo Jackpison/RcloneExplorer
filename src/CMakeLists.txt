@@ -5,7 +5,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(SOURCES
   main.cpp
-  main_window.cpp main_window_shell.cpp main_window.h main_window.ui
+  main_window.cpp main_window_shell.cpp main_window.h main_window.ui natural_sort.h
   remote_widget.cpp remote_widget.h remote_widget.ui
   transfer_dialog.cpp transfer_dialog.h transfer_dialog.ui
   export_dialog.cpp export_dialog.h export_dialog.ui
@@ -109,5 +109,11 @@ if(RB_BUILD_TESTS)
     target_link_libraries(test_legacy_ini PRIVATE Qt::Core Qt::Test)
     set_target_properties(test_legacy_ini PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     add_test(NAME legacy_ini COMMAND test_legacy_ini)
+
+    add_executable(test_natural_sort ../tests/test_natural_sort.cpp natural_sort.h)
+    target_include_directories(test_natural_sort PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(test_natural_sort PRIVATE Qt::Core Qt::Test)
+    set_target_properties(test_natural_sort PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    add_test(NAME natural_sort COMMAND test_natural_sort)
   endif()
 endif()

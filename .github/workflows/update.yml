@@ -160,7 +160,7 @@ jobs:
           sudo apt-get install -y -q ninja-build libgl1-mesa-dev libegl1 libxkbcommon-x11-0 \
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
             libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libfontconfig1 \
-            libdbus-1-3 xvfb file
+            libdbus-1-3 xvfb file appstream
 
       - name: Configure, build and test
         run: |
@@ -192,6 +192,19 @@ jobs:
           cp packaging/linux/rclone-explorer.desktop AppDir/usr/share/applications/
           cp packaging/linux/rclone-explorer.png AppDir/usr/share/icons/hicolor/256x256/apps/
           cp packaging/linux/io.github.jackpison.RcloneExplorer.metainfo.xml AppDir/usr/share/metainfo/
+          # add this version to the AppStream metadata, then validate it
+          python3 - "$ver" AppDir/usr/share/metainfo/io.github.jackpison.RcloneExplorer.metainfo.xml <<'PY'
+          import datetime, sys
+          ver, path = sys.argv[1], sys.argv[2]
+          today = datetime.date.today().isoformat()
+          xml = open(path, encoding="utf-8").read()
+          rel = (f'  <releases>\n    <release version="{ver}" date="{today}">\n'
+                 f'      <url>https://github.com/Jackpison/RcloneExplorer/releases/tag/v{ver}</url>\n'
+                 f'    </release>\n  </releases>\n')
+          xml = xml.replace("</component>", rel + "</component>")
+          open(path, "w", encoding="utf-8").write(xml)
+          PY
+          appstreamcli validate --no-net AppDir/usr/share/metainfo/io.github.jackpison.RcloneExplorer.metainfo.xml
           mkdir -p AppDir/usr/share/rclone-browser/icons/remotes
           cp icons/remotes/*.png AppDir/usr/share/rclone-browser/icons/remotes/
 

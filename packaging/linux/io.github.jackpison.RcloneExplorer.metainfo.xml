@@ -4,15 +4,37 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Rclone Explorer</name>
-  <summary>rclone GUI: browse, transfer and sync files on all your cloud storage</summary>
+  <summary>Browse, transfer and sync files on all your cloud storage with rclone</summary>
   <description>
-    <p>Rclone Explorer (formerly Rclone Browser) is a modern rclone GUI. Browse, upload, download and sync files on
-    Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ other services, with tabs,
-    icon and details views, pausable transfers and saved tasks.</p>
+    <p>Rclone Explorer (formerly Rclone Browser) is a modern GUI for rclone on Windows and Linux.
+    Browse, upload, download and sync files on Google Drive, OneDrive, Dropbox, pCloud, S3 and
+    70+ other services.</p>
+    <ul>
+      <li>Tabs, and icon or details views with sortable columns</li>
+      <li>Transfers you can pause and resume, with live progress</li>
+      <li>Saved tasks you can run again with one click</li>
+      <li>Light and dark themes</li>
+    </ul>
+    <p>The rclone program is bundled, and the app keeps it up to date.</p>
   </description>
   <launchable type="desktop-id">rclone-explorer.desktop</launchable>
   <url type="homepage">https://jackpison.github.io/RcloneExplorer/</url>
-  <url type="bugtracker">https://github.com/Jackpison/RcloneExplorer/issues</url>
+  <url type="vcs-browser">https://github.com/Jackpison/RcloneExplorer</url>
   <developer id="io.github.jackpison"><name>Jackpison</name></developer>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Your remotes on the Home page</caption>
+      <image>https://raw.githubusercontent.com/Jackpison/RcloneExplorer/main/docs/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Browsing a remote</caption>
+      <image>https://raw.githubusercontent.com/Jackpison/RcloneExplorer/main/docs/browser.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Transfers with live progress, in the dark theme</caption>
+      <image>https://raw.githubusercontent.com/Jackpison/RcloneExplorer/main/docs/transfers-dark.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1"/>
+  <!-- <releases> is filled in at build time from VERSION (see .github/workflows/update.yml) -->
 </component>
