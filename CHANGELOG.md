@@ -1,11 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [5.3.1] - 2026-10-30
 
 ### Added
 -   **Linux: the AppImage can update itself with AppImageUpdate** and similar tools. It now carries update information, and each release includes a matching `.zsync` file
 -   Linux: richer AppStream metadata (description, screenshots, version), which software centres and the AppImage catalog show
-
 -   **Install with Scoop:** `scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer`, then `scoop install rclone-explorer`. Settings, saved tasks and the bundled rclone are kept across updates
 
 ### Changed
