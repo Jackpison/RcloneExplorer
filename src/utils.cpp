@@ -368,3 +368,24 @@ void MigrateLegacyPortableIni() {
   MigrateLegacyIni(qApp->applicationFilePath());
 #endif
 }
+
+QStringList ListRemoteNames() {
+  QProcess p;
+  UseRclonePassword(&p);
+  p.setProgram(GetRclone());
+  p.setArguments(QStringList() << "listremotes" << GetRcloneConf());
+  p.setProcessChannelMode(QProcess::SeparateChannels);
+  p.start(QIODevice::ReadOnly);
+  if (!p.waitForFinished(4000) || p.exitCode() != 0) {
+    p.kill();
+    return {};
+  }
+  QStringList names;
+  for (const QString &line :
+       QString::fromUtf8(p.readAllStandardOutput()).split('\n')) {
+    if (!line.trimmed().isEmpty()) {
+      names << line.trimmed();
+    }
+  }
+  return names;
+}

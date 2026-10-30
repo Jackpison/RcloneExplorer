@@ -4,10 +4,10 @@
 
 // Keep in sync with the VERSION file in the repository root.
 #ifndef RB_VERSION_COMMA
-#define RB_VERSION_COMMA 5,3,6,0
+#define RB_VERSION_COMMA 5,3,7,0
 #endif
 #ifndef RB_VERSION_STR
-#define RB_VERSION_STR "5.3.6"
+#define RB_VERSION_STR "5.3.7"
 #endif
 
 VS_VERSION_INFO VERSIONINFO

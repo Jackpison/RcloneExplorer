@@ -46,7 +46,9 @@ QString Schedule::describe() const {
       return h == 1 ? QStringLiteral("Every hour")
                     : QStringLiteral("Every %1 hours").arg(h);
     }
-    return QStringLiteral("Every %1 minutes").arg(intervalMinutes);
+    return intervalMinutes == 1
+               ? QStringLiteral("Every minute")
+               : QStringLiteral("Every %1 minutes").arg(intervalMinutes);
   case Daily:
     return QStringLiteral("Daily at %1").arg(t);
   case Weekly: {

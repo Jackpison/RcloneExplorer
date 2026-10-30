@@ -20,7 +20,7 @@ public slots:
   void cancel();
 
 signals:
-  void finished(const QString &info);
+  void finished(const QString &info, bool success);
   void closed();
 
 private:

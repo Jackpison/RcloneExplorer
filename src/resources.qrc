@@ -2,4 +2,8 @@
   <qresource prefix="icons">
     <file>icon.png</file>
   </qresource>
+  <qresource prefix="/">
+    <file>sounds/finished.wav</file>
+    <file>sounds/failed.wav</file>
+  </qresource>
 </RCC>

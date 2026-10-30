@@ -129,6 +129,18 @@ private slots:
     QCOMPARE(s.next(QDateTime(QDate(2026, 11, 2), QTime(8, 0))),
              QDateTime(QDate(2026, 11, 9), QTime(8, 0)));
   }
+  void scheduleDescribeSingularAndPlural() {
+    Schedule s;
+    s.kind = Schedule::Interval;
+    s.intervalMinutes = 1;
+    QCOMPARE(s.describe(), QString("Every minute"));
+    s.intervalMinutes = 5;
+    QCOMPARE(s.describe(), QString("Every 5 minutes"));
+    s.intervalMinutes = 60;
+    QCOMPARE(s.describe(), QString("Every hour"));
+    s.intervalMinutes = 180;
+    QCOMPARE(s.describe(), QString("Every 3 hours"));
+  }
   void scheduleOffHasNoNext() {
     QVERIFY(!Schedule().next(QDateTime::currentDateTime()).isValid());
   }

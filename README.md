@@ -20,8 +20,9 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 - **Icons and Details views**: extra large to small icons (Ctrl + mouse wheel), or a sortable list with name, size, modified date, type, extension and path
 - Upload, download, create folders, rename, move and delete; drag and drop files from your file manager to upload
 - **Transfers you can pause and resume**, with live progress, speed and time left
+- A **sound** when a transfer finishes or fails, and the computer is **kept awake** while transfers run (both can be turned off in Preferences)
 - Saved **tasks**: store a transfer once, run it again with one click (or as a dry run), or **schedule** it to run by itself (every N minutes or hours, daily, or on chosen weekdays)
-- **Tools** on every remote: compare folders, copy between remotes, two-way sync (bisync), remove duplicates and empty the trash
+- **Tools** on every remote: compare folders, copy between remotes (with a remote folder browser), two-way sync (bisync), remove duplicates and empty the trash
 - Sidebar remotes sortable by name, type or your own order (drag and drop)
 - Saved tasks sortable by name or type
 - Breadcrumb address bar, filter the current folder (Ctrl+F)

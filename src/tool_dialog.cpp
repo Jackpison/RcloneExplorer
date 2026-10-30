@@ -1,31 +1,8 @@
 #include "tool_dialog.h"
+#include "remote_folder_dialog.h"
 #include "rclone_commands.h"
 #include "theme.h"
 #include "utils.h"
-
-namespace {
-// Names of the configured remotes ("drive:", "s3:"), for completion.
-QStringList remoteNames() {
-  QProcess p;
-  UseRclonePassword(&p);
-  p.setProgram(GetRclone());
-  p.setArguments(QStringList() << "listremotes" << GetRcloneConf());
-  p.setProcessChannelMode(QProcess::SeparateChannels);
-  p.start(QIODevice::ReadOnly);
-  if (!p.waitForFinished(4000) || p.exitCode() != 0) {
-    p.kill();
-    return {};
-  }
-  QStringList names;
-  for (const QString &line :
-       QString::fromUtf8(p.readAllStandardOutput()).split('\n')) {
-    if (!line.trimmed().isEmpty()) {
-      names << line.trimmed();
-    }
-  }
-  return names;
-}
-} // namespace
 
 ToolDialog::ToolDialog(Tool tool, const QString &source, QWidget *parent)
     : QDialog(parent), mTool(tool), mSource(source) {
@@ -41,13 +18,22 @@ ToolDialog::ToolDialog(Tool tool, const QString &source, QWidget *parent)
   auto addOther = [&](const QString &label) {
     mOther = new QLineEdit;
     mOther->setPlaceholderText(tr("remote:folder  or a folder on this PC"));
-    auto *completer = new QCompleter(remoteNames(), mOther);
+    auto *completer = new QCompleter(ListRemoteNames(), mOther);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
     mOther->setCompleter(completer);
-    auto *browse = new QToolButton;
-    browse->setText(tr("Browse…"));
-    browse->setToolTip(tr("Pick a folder on this PC"));
-    QObject::connect(browse, &QToolButton::clicked, this, [this]() {
+    auto *browseRemote = new QToolButton;
+    browseRemote->setText(tr("Remote…"));
+    browseRemote->setToolTip(tr("Pick a folder on one of your remotes"));
+    QObject::connect(browseRemote, &QToolButton::clicked, this, [this]() {
+      RemoteFolderDialog picker(mOther->text().trimmed(), this);
+      if (picker.exec() == QDialog::Accepted) {
+        mOther->setText(picker.selected());
+      }
+    });
+    auto *browseLocal = new QToolButton;
+    browseLocal->setText(tr("This PC…"));
+    browseLocal->setToolTip(tr("Pick a folder on this PC"));
+    QObject::connect(browseLocal, &QToolButton::clicked, this, [this]() {
       const QString dir = QFileDialog::getExistingDirectory(this, windowTitle());
       if (!dir.isEmpty()) {
         mOther->setText(QDir::toNativeSeparators(dir));
@@ -55,7 +41,8 @@ ToolDialog::ToolDialog(Tool tool, const QString &source, QWidget *parent)
     });
     auto *row = new QHBoxLayout;
     row->addWidget(mOther, 1);
-    row->addWidget(browse);
+    row->addWidget(browseRemote);
+    row->addWidget(browseLocal);
     form->addRow(label, row);
   };
 

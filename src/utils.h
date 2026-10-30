@@ -31,3 +31,8 @@ QStringList GetDefaultRcloneOptionsList();
 QStringList GetShowHidden();
 
 unsigned int compareVersion(std::string, std::string);
+
+// Names of the remotes in the rclone configuration, each with its trailing
+// colon ("drive:"), as `rclone listremotes` prints them. Waits briefly for
+// rclone; returns an empty list if it cannot be run.
+QStringList ListRemoteNames();

@@ -13,6 +13,7 @@
 #include "preferences_dialog.h"
 #include "remote_widget.h"
 #include "schedule_dialog.h"
+#include "sound_player.h"
 #include "stream_widget.h"
 #include "transfer_dialog.h"
 #include "utils.h"
@@ -58,6 +59,8 @@ MainWindow::MainWindow() {
     mCloseToTray = settings->value("Settings/closeToTray", false).toBool();
     mNotifyFinishedTransfers =
         settings->value("Settings/notifyFinishedTransfers", true).toBool();
+    mPlaySounds = settings->value("Settings/playSounds", true).toBool();
+    mKeepAwake = settings->value("Settings/keepAwake", true).toBool();
 
     mSystemTray.setVisible(mAlwaysShowInTray);
 
@@ -123,6 +126,8 @@ MainWindow::MainWindow() {
       settings->setValue("Settings/closeToTray", dialog.getCloseToTray());
       settings->setValue("Settings/notifyFinishedTransfers",
                          dialog.getNotifyFinishedTransfers());
+      settings->setValue("Settings/playSounds", dialog.getPlaySounds());
+      settings->setValue("Settings/keepAwake", dialog.getKeepAwake());
 
       settings->setValue("Settings/showFolderIcons",
                          dialog.getShowFolderIcons());
@@ -149,6 +154,8 @@ MainWindow::MainWindow() {
       mAlwaysShowInTray = dialog.getAlwaysShowInTray();
       mCloseToTray = dialog.getCloseToTray();
       mNotifyFinishedTransfers = dialog.getNotifyFinishedTransfers();
+      mPlaySounds = dialog.getPlaySounds();
+      mKeepAwake = dialog.getKeepAwake();
 
       mSystemTray.setVisible(mAlwaysShowInTray);
     }
@@ -945,12 +952,34 @@ JobWidget *MainWindow::addTransfer(const QString &message,
   line->setFrameShape(QFrame::HLine);
   line->setFrameShadow(QFrame::Sunken);
 
+  // The computer may not sleep while this transfer runs. Released exactly
+  // once, whichever of "finished" and "closed" comes first.
+  auto holdsPower = std::make_shared<bool>(mKeepAwake);
+  if (*holdsPower) {
+    mPower.acquire();
+  }
+  auto releasePower = [this, holdsPower]() {
+    if (*holdsPower) {
+      *holdsPower = false;
+      mPower.release();
+    }
+  };
+  QObject::connect(widget, &JobWidget::closed, this, releasePower);
+
   QObject::connect(
-      widget, &JobWidget::finished, this, [=, this](const QString &info) {
+      widget, &JobWidget::finished, this,
+      [=, this](const QString &info, bool success) {
+        releasePower();
+        if (mPlaySounds) {
+          SoundPlayer::play(success ? SoundPlayer::Finished
+                                    : SoundPlayer::Failed);
+        }
         if (mNotifyFinishedTransfers) {
           qApp->alert(this);
           mLastFinished = widget;
-          mSystemTray.showMessage("Transfer finished", info);
+          mSystemTray.showMessage(
+              success ? tr("Transfer finished") : tr("Transfer failed"), info,
+              success ? QSystemTrayIcon::Information : QSystemTrayIcon::Warning);
         }
 
         if (--mJobCount == 0) {

@@ -797,9 +797,8 @@ void MainWindow::rebuildNavRemotes() {
   mHomeEmpty->setVisible(n == 0);
   mHomeSubtitle->setText(
       n == 0 ? tr("Your cloud storage, as configured in rclone.")
-             : (n == 1 ? tr("1 remote configured in rclone. Double-click to browse.")
-                       : tr("%1 remotes configured in rclone. Double-click to "
-                            "browse.").arg(n)));
+             : (n == 1 ? tr("1 remote. Double-click to browse.")
+                       : tr("%1 remotes. Double-click to browse.").arg(n)));
   syncNavToCurrentPage();
 }
 

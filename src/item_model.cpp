@@ -453,7 +453,7 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
   // two separate rclone runs, lsd + lsl, each listing the folder again).
   auto ls = new QProcess(this);
 
-  auto cache = new QVector<Item *>();
+  auto cache = std::make_shared<QVector<Item *>>();
 
   Item *loading = new Item();
   loading->state = Item::Special;
@@ -497,7 +497,6 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
 
     if (parent->isDeleted) {
       qDeleteAll(*cache);
-      delete cache;
       delete parent;
       return;
     }
@@ -563,7 +562,6 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
     }
 
     qDeleteAll(*cache);
-    delete cache;
 
     for (int i = 0; i < parent->childs.count(); i++) {
       if (parent->childs[i] == loading ||

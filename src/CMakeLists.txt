@@ -12,6 +12,7 @@ set(SOURCES
   progress_dialog.cpp progress_dialog.h progress_dialog.ui
   mount_dialog.cpp mount_dialog.h
   tool_dialog.cpp tool_dialog.h
+  remote_folder_dialog.cpp remote_folder_dialog.h
   schedule_dialog.cpp schedule_dialog.h
   job_widget.cpp job_widget.h job_widget.ui
   mount_widget.cpp mount_widget.h mount_widget.ui
@@ -23,7 +24,9 @@ set(SOURCES
   rclone_updater.cpp rclone_updater.h
   theme.cpp theme.h
   utils.cpp utils.h
-  command_args.h
+  command_args.h elided_label.h
+  sound_player.cpp sound_player.h
+  power_inhibitor.cpp power_inhibitor.h
   rclone_commands.cpp rclone_commands.h
   schedule.cpp schedule.h
   job_options.cpp job_options.h
@@ -95,7 +98,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
   Qt::Core Qt::Gui Qt::Widgets Qt::Network Qt::Svg)
 
 if(WIN32)
-  target_link_libraries(${TARGET_NAME} PRIVATE shell32 ole32 dwmapi advapi32)
+  target_link_libraries(${TARGET_NAME} PRIVATE shell32 ole32 dwmapi advapi32 winmm)
 endif()
 
 # Parser unit tests (no GUI, no rclone needed).

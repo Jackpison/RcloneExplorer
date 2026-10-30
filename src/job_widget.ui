@@ -49,7 +49,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="info"/>
+       <widget class="ElidedLabel" name="info"/>
       </item>
       <item>
        <widget class="QToolButton" name="copy">
@@ -451,6 +451,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ElidedLabel</class>
+   <extends>QLabel</extends>
+   <header>elided_label.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>showDetails</tabstop>
   <tabstop>cancel</tabstop>

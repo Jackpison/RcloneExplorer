@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.3.7] - 2026-10-30
+
+### Added
+-   **Remote folder picker.** In Compare, Copy to another remote and Two-way sync, the new **Remote…** button opens a browser of all your remotes: choose the remote, open folders to look inside (they are listed as you open them) and select one. You can also type a folder that does not exist yet. **This PC…** picks a local folder as before
+-   **Sounds.** A short chime when a transfer finishes and a lower one when it fails or stops with an error (Preferences, Interface, *Sounds and sleep*; on by default). The sounds are built in and play with what the system has: the Windows sound output, or `paplay`, `pw-play`, `aplay` or `play` on Linux, falling back to the system beep
+-   **Keep the computer awake while transfers run**, so a long copy is not interrupted by sleep (same preferences group, on by default). It uses the Windows power API, or `systemd-inhibit` on Linux, and lets go as soon as the last transfer ends
+
+### Fixed
+-   Transfer cards cut the title off after a few words even though the row had plenty of room (for example "Copy /tmp/claude-0/-ho"). The title now uses the free space and is shortened in the middle, so the end of the path stays visible; the full text is in the tooltip
+-   The *From* and *To* boxes on a transfer card started in the middle of a long path instead of at its beginning
+-   A schedule that runs every minute was described as "Every 1 minutes"
+-   The notification for a transfer that failed said "Transfer finished". It now says "Transfer failed"
+-   The Home page subtitle wrapped onto two lines next to the buttons in a narrow window; it is shorter now
+
+### Changed
+-   Code clean-ups found by static analysis: the folder-listing buffer is released automatically, the remote list used by several dialogs is read in one place, and the transfer title and the file-name labels share one text-shortening label
+
+### Not included
+-   macOS-only extras (notification centre, power assertions) are not part of this release because Rclone Explorer is built for Windows and Linux only
+
 ## [5.3.6] - 2026-10-30
 
 ### Fixed

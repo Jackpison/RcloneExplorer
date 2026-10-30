@@ -1,6 +1,7 @@
 #pragma once
 
 #include "job_options.h"
+#include "power_inhibitor.h"
 #include "schedule.h"
 #include "pch.h"
 
@@ -37,6 +38,9 @@ private:
   bool mAlwaysShowInTray;
   bool mCloseToTray;
   bool mNotifyFinishedTransfers;
+  bool mPlaySounds = true;
+  bool mKeepAwake = true;
+  PowerInhibitor mPower; // sleep is blocked while transfers run
 
   QLabel *mStatusMessage;
 

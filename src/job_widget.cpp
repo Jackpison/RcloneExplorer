@@ -1,4 +1,5 @@
 #include "job_widget.h"
+#include "elided_label.h"
 #include "rclone_output.h"
 #include "theme.h"
 #include "utils.h"
@@ -10,24 +11,6 @@
 // line (in a form layout it was pinned to the top of the row).
 // ---------------------------------------------------------------------------
 
-namespace {
-// Label that shortens its text in the middle to whatever width it gets, so long
-// file names never push the bar around.
-class ElidedLabel : public QLabel {
-public:
-  using QLabel::QLabel;
-  QSize minimumSizeHint() const override { return QSize(0, QLabel::minimumSizeHint().height()); }
-
-protected:
-  void paintEvent(QPaintEvent *) override {
-    QPainter p(this);
-    p.setPen(palette().color(foregroundRole()));
-    p.setFont(font());
-    p.drawText(rect(), Qt::AlignVCenter | Qt::AlignLeft,
-               fontMetrics().elidedText(text(), Qt::ElideMiddle, width()));
-  }
-};
-} // namespace
 
 class FileProgressRow : public QWidget {
 public:
@@ -80,6 +63,12 @@ JobWidget::JobWidget(QProcess *process, const QString &info,
 
   ui.source->setText(source);
   ui.dest->setText(dest);
+  // setText leaves the cursor at the end, which scrolls a long path so that
+  // its beginning is cut off: show the start
+  ui.source->setCursorPosition(0);
+  ui.dest->setCursorPosition(0);
+  ui.source->setToolTip(source);
+  ui.dest->setToolTip(dest);
   ui.info->setText(info);
 
   ui.details->setVisible(false);
@@ -237,7 +226,7 @@ JobWidget::JobWidget(QProcess *process, const QString &info,
 
                      ui.cancel->setToolTip("Close");
 
-                     emit finished(ui.info->text());
+                     emit finished(ui.info->text(), status == 0);
                    });
 
   Theme::setStatus(ui.showDetails, "running");
@@ -354,7 +343,7 @@ void JobWidget::buildFluentLayout() {
 
   // the summary line must never force the card wider than the window
   ui.info->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-  ui.info->setToolTip(ui.info->text());
+  ui.info->setAutoToolTip(true);
 
   // pause / resume
   mPause = new QToolButton;
@@ -367,6 +356,9 @@ void JobWidget::buildFluentLayout() {
   mSummary = new QLabel;
   mSummary->setObjectName("JobSummary");
   header->insertWidget(header->indexOf(ui.copy), mSummary);
+  // the title takes the free room (and is elided in the middle when it is
+  // still too long); the result summary keeps only what it needs
+  header->setStretchFactor(ui.info, 1);
   ui.cancel->setToolTip(tr("Cancel transfer"));
 }
 

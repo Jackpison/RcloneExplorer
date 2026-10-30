@@ -371,6 +371,29 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBoxSoundPower">
+         <property name="title">
+          <string>Sounds and sleep</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayoutSoundPower">
+          <item>
+           <widget class="QCheckBox" name="playSounds">
+            <property name="text">
+             <string>Play a sound when a transfer finishes or fails</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="keepAwake">
+            <property name="text">
+             <string>Keep the computer awake while transfers are running</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

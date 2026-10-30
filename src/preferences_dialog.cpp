@@ -106,6 +106,9 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
   // remote icons have a fixed size in the redesigned interface
   ui.groupBox_5->hide();
 
+  ui.playSounds->setChecked(settings->value("Settings/playSounds", true).toBool());
+  ui.keepAwake->setChecked(settings->value("Settings/keepAwake", true).toBool());
+
   if (QSystemTrayIcon::isSystemTrayAvailable()) {
     ui.alwaysShowInTray->setChecked(
         settings->value("Settings/alwaysShowInTray", false).toBool());
@@ -224,6 +227,12 @@ bool PreferencesDialog::getAlwaysShowInTray() const {
 bool PreferencesDialog::getCloseToTray() const {
   return ui.closeToTray->isChecked();
 }
+
+bool PreferencesDialog::getPlaySounds() const {
+  return ui.playSounds->isChecked();
+}
+
+bool PreferencesDialog::getKeepAwake() const { return ui.keepAwake->isChecked(); }
 
 bool PreferencesDialog::getNotifyFinishedTransfers() const {
   return ui.notifyFinishedTransfers->isChecked();
