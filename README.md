@@ -108,6 +108,25 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 - The Windows build enables Control Flow Guard, CET shadow-stack compatibility, ASLR and DEP.
 - Releases are built by GitHub Actions from this repository with every action and build tool pinned to an exact version and checksum; each release publishes SHA-256 checksums. Both packages are launched in a self-test before publishing.
 
+## Code signing policy
+
+Windows releases are moving to signed builds: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). Until the first signed release, `Rclone Explorer.exe` is unsigned and Windows may warn about it (see [Getting started](#getting-started)).
+
+- Committers and reviewers: [Jackpison](https://github.com/Jackpison)
+- Approvers: [Jackpison](https://github.com/Jackpison)
+- Only `Rclone Explorer.exe` is signed, and only when it was built from this repository by the [Update workflow](.github/workflows/update.yml) on GitHub Actions. Every release is approved by hand before it is signed.
+- The download also contains files from other projects (the Qt libraries and rclone). They are not signed by this project.
+
+## Privacy
+
+Rclone Explorer has no account, no telemetry and no analytics. It only connects to other systems in these cases:
+
+- **Your storage:** it runs rclone against the cloud services and servers you set up, when you browse, transfer, mount, stream, sync or mirror.
+- **rclone updates:** at most about once a day it asks `downloads.rclone.org` for the newest rclone version number, and when you install an update it downloads rclone from `downloads.rclone.org` (or `github.com/rclone/rclone` as a fallback). Nothing about you or your files is sent. Turn the automatic check off with **Help & Update → Check for rclone updates automatically**.
+- **Links:** the website, GitHub and documentation links open in your browser only when you click them.
+
+Settings, saved tasks, mirrors and their history are stored only on your computer (see [Where things are stored](#where-things-are-stored)). Cloud credentials stay in rclone's own configuration.
+
 ## Feedback
 
 Feedback and bug reports are welcome! Please [open an issue](../../issues) and include the output from *Show Output* on the transfer card if something fails.
