@@ -925,6 +925,68 @@ private:
 };
 } // namespace
 
+// A logo file. Logos that are themselves almost black (Filen's, for example)
+// would vanish on the dark theme, so there they are drawn on a light rounded
+// plate. Decided while painting, so it follows the light / dark switch.
+class LogoIconEngine : public QIconEngine {
+public:
+  explicit LogoIconEngine(const QString &file) : mFile(file), mIcon(file) {
+    const QImage img = mIcon.pixmap(64, 64).toImage().convertToFormat(QImage::Format_ARGB32);
+    double sum = 0;
+    int n = 0;
+    for (int y = 0; y < img.height(); ++y) {
+      for (int x = 0; x < img.width(); ++x) {
+        const QColor c = QColor::fromRgba(img.pixel(x, y));
+        if (c.alpha() > 200) {
+          sum += 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF();
+          ++n;
+        }
+      }
+    }
+    mNearlyBlack = n > 0 && sum / n < 0.12;
+  }
+
+  void paint(QPainter *p, const QRect &rect, QIcon::Mode mode, QIcon::State state) override {
+    if (gDark && mNearlyBlack) {
+      p->save();
+      p->setRenderHint(QPainter::Antialiasing);
+      p->setPen(Qt::NoPen);
+      p->setBrush(QColor("#E7E5E4"));
+      const qreal r = rect.width() * 0.24;
+      p->drawRoundedRect(QRectF(rect), r, r);
+      p->restore();
+      const int m = qMax(2, rect.width() / 8);
+      mIcon.paint(p, rect.adjusted(m, m, -m, -m), Qt::AlignCenter, mode, state);
+    } else {
+      mIcon.paint(p, rect, Qt::AlignCenter, mode, state);
+    }
+  }
+
+  QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override {
+    return scaledPixmap(size, mode, state, 1.0);
+  }
+
+  QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state,
+                       qreal scale) override {
+    QPixmap pm(size * scale);
+    pm.fill(Qt::transparent);
+    {
+      QPainter p(&pm);
+      paint(&p, QRect(QPoint(0, 0), size * scale), mode, state);
+    }
+    pm.setDevicePixelRatio(scale);
+    return pm;
+  }
+
+  QIconEngine *clone() const override { return new LogoIconEngine(*this); }
+  QString key() const override { return "logo"; }
+
+private:
+  QString mFile;
+  QIcon mIcon;
+  bool mNearlyBlack = false;
+};
+
 static QIcon buildRemoteIcon(const QString &type) {
   // Logos: the user's own folder first, then the logos shipped with the app.
   QStringList dirs;
@@ -946,7 +1008,7 @@ static QIcon buildRemoteIcon(const QString &type) {
     for (const char *ext : {"png", "svg", "ico"}) {
       const QString f = QDir(d).filePath(type + "." + ext);
       if (QFileInfo::exists(f)) {
-        return QIcon(f);
+        return QIcon(new LogoIconEngine(f));
       }
     }
   }

@@ -32,6 +32,10 @@ QString crumbs(const QString &path, const QString &emptyText) {
   return out;
 }
 
+qsizetype lines_shown(const Mirror::Changes &c) {
+  return qMin<qsizetype>(c.added.size() + c.updated.size() + c.removed.size(), 1001);
+}
+
 QToolButton *cardButton(const QString &icon, const QString &tip) {
   auto *b = new QToolButton;
   b->setIcon(Theme::icon(icon));
@@ -830,7 +834,8 @@ QWidget *MirrorPage::destRow(const Mirror::Plan &p, int t, const Size &source) {
       auto *files = new QPlainTextEdit;
       files->setObjectName("MirrorFiles");
       files->setReadOnly(true);
-      files->setMaximumHeight(170);
+      // room for up to 10 lines, so a short list is not squeezed
+      files->setFixedHeight(qBound(2, int(lines_shown(c)), 10) * QFontMetrics(Theme::monoFont()).lineSpacing() + 18);
       QStringList lines;
       for (const QString &f : c.added) lines << "+ " + f;
       for (const QString &f : c.updated) lines << "~ " + f;
