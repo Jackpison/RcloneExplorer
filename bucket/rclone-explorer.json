@@ -1,12 +1,12 @@
 {
-    "version": "5.4.0",
+    "version": "5.4.1",
     "description": "Portable rclone GUI: browse, transfer and sync files on Google Drive, OneDrive, Dropbox, S3 and 70+ other cloud services.",
     "homepage": "https://jackpison.github.io/RcloneExplorer/",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v5.4.0/RcloneExplorer-5.4.0-windows-x64.zip",
-            "hash": "4017fcab0999044d0d35d3dba202e8f71d94374cc0b1f6cf53ce1048d5bc0b8a"
+            "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v5.4.1/RcloneExplorer-5.4.1-windows-x64.zip",
+            "hash": "874c9132da63b4f0f51a40dd56563c20a2358bd53b05b596089d98cd43db98de"
         }
     },
     "extract_dir": "Rclone Explorer",
