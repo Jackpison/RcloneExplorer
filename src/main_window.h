@@ -9,6 +9,7 @@ class RcloneUpdater;
 #include "ui_main_window.h"
 
 class JobWidget;
+class MirrorPage;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -92,7 +93,8 @@ private:
   QListWidget *mNavRemotes = nullptr;
   QLabel *mNavRemoteCount = nullptr;
   QToolButton *mThemeButton = nullptr;
-  QStackedWidget *mPages = nullptr; // Home, Transfers, Tasks, remote tabs
+  QStackedWidget *mPages = nullptr; // Home, Transfers, Tasks, remote tabs, Mirror
+  MirrorPage *mMirror = nullptr;
   void showPage(int page);
   QToolButton *mNewTab = nullptr;
   void updateNewTabButton();

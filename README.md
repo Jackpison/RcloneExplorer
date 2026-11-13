@@ -22,6 +22,7 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 - **Transfers you can pause and resume**, with live progress, speed and time left
 - A **sound** when a transfer finishes or fails, and the computer is **kept awake** while transfers run (both can be turned off in Preferences)
 - Saved **tasks**: store a transfer once, run it again with one click (or as a dry run), or **schedule** it to run by itself (every N minutes or hours, daily, or on chosen weekdays)
+- **Mirror**: keep a folder, or any sub-folder, identical on other remotes, each copy in a folder you choose (`Google Drive:Gallery/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos`). See the size, file count and a Matches / Differs badge for every copy, **check** exactly what would be added, updated or removed before anything changes, then **sync** with one click or on a **schedule**. Files the source removed or replaced are kept in a `_SyncTrash` folder on the copy (or deleted, or left alone), with a **Clean up trash** tool and a **history** of every run. Skip files by pattern (`*.tmp`, `Thumbs.db`…); Google Docs are skipped unless you choose to copy them as Office files
 - **Tools** on every remote: compare folders, copy between remotes (with a remote folder browser), two-way sync (bisync), remove duplicates and empty the trash
 - Sidebar remotes sortable by name, type or your own order (drag and drop)
 - Saved tasks sortable by name or type
@@ -79,6 +80,7 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 | rclone | `rclone\rclone.exe` (updated from inside the app) |
 | rclone configuration | `%APPDATA%\rclone\rclone.conf` by default; copy it to `rclone\rclone.conf` to take your remotes with you |
 | Settings / saved tasks | `Rclone Explorer.ini` / `tasks.bin` |
+| Mirrors / their history | `mirrors.json` / `mirror_history.json` (next to `tasks.bin`) |
 | Remote logos | `icons\remotes\<type>.png` (see [remote-icons.md](docs/remote-icons.md)) |
 | Documentation | `docs\` |
 | Qt plugins | `qt\plugins` (located via `qt.conf`) |

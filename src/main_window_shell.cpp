@@ -3,6 +3,7 @@
 // and their logic are kept; this file only rearranges and restyles them.
 
 #include "main_window.h"
+#include "mirror_page.h"
 #include "remote_widget.h"
 #include "theme.h"
 #include "utils.h"
@@ -78,7 +79,7 @@ public:
   }
 };
 
-enum Page { HomePage = 0, TransfersPage = 1, TasksPage = 2, BrowserPage = 3 };
+enum Page { HomePage = 0, TransfersPage = 1, TasksPage = 2, BrowserPage = 3, MirrorTab = 4 };
 
 QLabel *makeLabel(const QString &text, const char *objectName) {
   auto *l = new QLabel(text);
@@ -229,8 +230,9 @@ void MainWindow::buildShell() {
   };
   addPage("home", tr("Home"), HomePage);
   mNavTransfers = addPage("transfers", tr("Transfers"), TransfersPage);
+  addPage("update", tr("Mirror"), MirrorTab);
   addPage("tasks", tr("Saved tasks"), TasksPage);
-  mNav->setFixedHeight(3 * 42 + 4);
+  mNav->setFixedHeight(4 * 42 + 4);
   mNav->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   navLayout->addWidget(mNav);
 
@@ -366,6 +368,14 @@ void MainWindow::buildShell() {
     mPages->addWidget(w);
   }
   mPages->addWidget(ui.tabs);
+  // Mirror: folders kept identical on other remotes (mirror_page.cpp). Syncs
+  // run as ordinary transfers, so they get the usual cards, sounds and
+  // sleep blocking.
+  mMirror = new MirrorPage(
+      [this](const QString &message, const QString &source, const QString &dest,
+             const QStringList &args) { return addTransfer(message, source, dest, args); },
+      [this]() { showPage(TransfersPage); });
+  mPages->addWidget(mMirror);
   cl->addWidget(mPages);
 
   ui.tabs->setAttribute(Qt::WA_StyledBackground);
@@ -790,6 +800,15 @@ void MainWindow::rebuildNavRemotes() {
     it->setData(TargetRole, src->text());
     it->setData(TypeRole, src->data(Qt::UserRole));
     it->setToolTip(src->text() + " · " + src->data(Qt::UserRole).toString());
+  }
+  if (mMirror) {
+    QMap<QString, QString> remotes;
+    QStringList order;
+    for (QListWidgetItem *src : std::as_const(sources)) {
+      remotes.insert(src->text(), src->data(Qt::UserRole).toString());
+      order << src->text();
+    }
+    mMirror->setRemotes(remotes, order);
   }
   mNavRemoteCount->setText(QString::number(n));
   mNavRemoteCount->setVisible(n > 0);

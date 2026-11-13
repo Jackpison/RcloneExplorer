@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.4.0] - Unreleased
+
+### Added
+-   **Mirror**, a new page in the sidebar: keep a folder, or any sub-folder, of one remote identical on other remotes. Each copy goes to the folder you choose on its remote (for example `Google Drive:Gallery/Trips/Paris` → `pCloud:Backups/Paris` and `Koofr:Photos/Paris`)
+    -   **New mirror** in two steps: pick the source in a folder tree (size and file count of the selected folder are shown), then switch on the destination remotes and choose the folder on each, typed or picked with **Remote…**. A destination that already holds files says so, and what will happen to the files that are not in the source
+    -   Every mirror shows the size and file count of the source and of each copy, with a **Matches**, **Differs** or **New** badge. **Refresh** counts again
+    -   **Check** lists exactly what a sync would add, update and remove, per copy and file by file, without changing anything; **Apply these changes** then syncs. **Sync** runs straight away. Syncs are ordinary transfers on the Transfers page, with progress, sounds and sleep blocking; one copy per destination remote runs at a time
+    -   **Manual or scheduled**: every mirror runs only when you press Sync, or on a schedule (every N minutes or hours, daily, or on chosen weekdays), set from the chip on its card
+    -   What happens to files that were removed or replaced in the source: keep the old version in `_SyncTrash/<date>/` on the copy (the default), delete it, or never remove anything
+    -   **Skip some files** by pattern, with one-click suggestions (`Thumbs.db`, `.DS_Store`, `desktop.ini`, `*.tmp`, `~$*`); sizes and counts respect them
+    -   Google Docs, Sheets and Slides are skipped by default (they are not real files); they can be copied as Office files instead
+    -   **History** of the last 100 checks and syncs, with the files that changed and any errors
+    -   **Clean up trash**: delete trash snapshots older than 7, 14, 30 or 90 days, or all of them, with a preview of the space freed
+    -   Destinations that overlap (one inside the other, on the same remote) are refused, because one sync would delete the other's files
+
+### Tests
+-   `test_mirror`: validation, command lines, rclone's change report, trash ages, saving, and an end-to-end run through a real rclone (check, sync, skip patterns, trash) when rclone is installed
+
 ## [5.3.7] - 2026-10-30
 
 ### Added
