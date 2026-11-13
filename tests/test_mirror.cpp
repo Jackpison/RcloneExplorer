@@ -15,6 +15,15 @@ Plan plan(const QString &src, const QString &path, QList<Target> targets) {
 }
 } // namespace
 
+// A full path on this PC: "/data/x" on Linux, "C:/data/x" on Windows
+static QString P(const char *path) {
+#ifdef Q_OS_WIN
+  return QStringLiteral("C:") + QString::fromUtf8(path);
+#else
+  return QString::fromUtf8(path);
+#endif
+}
+
 class TestMirror : public QObject {
   Q_OBJECT
 
@@ -114,54 +123,54 @@ private slots:
 #endif
     QCOMPARE(cleanLocalPath("/home/me//Backups/"), QString("/home/me/Backups"));
     QCOMPARE(cleanLocalPath(""), QString());
-    const Target t{QString(), "/data/Backups/Paris"};
+    const Target t{QString(), P("/data/Backups/Paris")};
     QVERIFY(t.local());
-    QCOMPARE(targetPath(t), QString("/data/Backups/Paris"));
-    QCOMPARE(trashRoot(t), QString("/data/Backups/_SyncTrash"));
-    QCOMPARE(trashFor(t, "2026-11-13_094600"), QString("/data/Backups/_SyncTrash/2026-11-13_094600/Paris"));
+    QCOMPARE(targetPath(t), P("/data/Backups/Paris"));
+    QCOMPARE(trashRoot(t), P("/data/Backups/_SyncTrash"));
+    QCOMPARE(trashFor(t, "2026-11-13_094600"), P("/data/Backups/_SyncTrash/2026-11-13_094600/Paris"));
     const Target r{"pCloud", "Backups/Paris"};
     QCOMPARE(trashRoot(r), QString("pCloud:_SyncTrash"));
   }
 
   void localFolderArgs() {
-    Plan p = plan("gdrive", "Gallery", {{QString(), "/data/Backups/Gallery"}});
+    Plan p = plan("gdrive", "Gallery", {{QString(), P("/data/Backups/Gallery")}});
     RunOptions o;
     o.stamp = "2026-11-13_094600";
     const QStringList a = syncArgs(p, p.targets[0], o);
-    QCOMPARE(a.mid(0, 3), QStringList({"sync", "gdrive:Gallery", "/data/Backups/Gallery"}));
+    QCOMPARE(a.mid(0, 3), QStringList({"sync", "gdrive:Gallery", P("/data/Backups/Gallery")}));
     QCOMPARE(a.at(a.indexOf("--backup-dir") + 1),
-             QString("/data/Backups/_SyncTrash/2026-11-13_094600/Gallery"));
+             P("/data/Backups/_SyncTrash/2026-11-13_094600/Gallery"));
   }
 
   void localFolderValidation() {
-    QVERIFY(validate(plan("g", "A", {{QString(), "/data/Backups/A"}}), {}).isEmpty());
+    QVERIFY(validate(plan("g", "A", {{QString(), P("/data/Backups/A")}}), {}).isEmpty());
     QVERIFY(!validate(plan("g", "A", {{QString(), ""}}), {}).isEmpty());              // none chosen
     QVERIFY(!validate(plan("g", "A", {{QString(), "Backups/A"}}), {}).isEmpty());     // not a full path
     QVERIFY(!validate(plan("g", "A", {{QString(), "/"}}), {}).isEmpty());             // a whole drive
-    QVERIFY(!validate(plan("g", "A", {{QString(), "/x/_SyncTrash/A"}}), {}).isEmpty()); // into trash
-    const Plan a = plan("g", "A", {{QString(), "/data/Backups"}});
-    QVERIFY(!validate(plan("g", "B", {{QString(), "/data/Backups/B"}}), {a}).isEmpty()); // overlap
-    QVERIFY(validate(plan("g", "B", {{QString(), "/data/Other/B"}}), {a}).isEmpty());
+    QVERIFY(!validate(plan("g", "A", {{QString(), P("/x/_SyncTrash/A")}}), {}).isEmpty()); // into trash
+    const Plan a = plan("g", "A", {{QString(), P("/data/Backups")}});
+    QVERIFY(!validate(plan("g", "B", {{QString(), P("/data/Backups/B")}}), {a}).isEmpty()); // overlap
+    QVERIFY(validate(plan("g", "B", {{QString(), P("/data/Other/B")}}), {a}).isEmpty());
     // a local folder and a remote folder with the same name do not clash
     QVERIFY(validate(plan("g", "B", {{"p", "data/Backups"}}), {a}).isEmpty());
   }
 
   void localFolderSource() {
-    const Plan up = plan(QString(), "/data/Pictures", {{"pCloud", "Pictures"}});
+    const Plan up = plan(QString(), P("/data/Pictures"), {{"pCloud", "Pictures"}});
     QVERIFY(up.localSource());
     QVERIFY(validate(up, {}).isEmpty());
     QCOMPARE(syncArgs(up, up.targets[0], {}).mid(0, 3),
-             QStringList({"sync", "/data/Pictures", "pCloud:Pictures"}));
+             QStringList({"sync", P("/data/Pictures"), "pCloud:Pictures"}));
     QVERIFY(!validate(plan(QString(), "Pictures", {{"p", "X"}}), {}).isEmpty());      // not a full path
     QVERIFY(!validate(plan(QString(), "", {{"p", "X"}}), {}).isEmpty());              // none chosen
     // from one folder on this PC to another: fine apart, refused when nested
-    QVERIFY(validate(plan(QString(), "/data/Pictures", {{QString(), "/backup/Pictures"}}), {}).isEmpty());
-    QVERIFY(!validate(plan(QString(), "/data/Pictures", {{QString(), "/data/Pictures/copy"}}), {}).isEmpty());
-    QVERIFY(!validate(plan(QString(), "/data", {{QString(), "/data/copy"}}), {}).isEmpty());
+    QVERIFY(validate(plan(QString(), P("/data/Pictures"), {{QString(), P("/backup/Pictures")}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), P("/data/Pictures"), {{QString(), P("/data/Pictures/copy")}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), P("/data"), {{QString(), P("/data/copy")}}), {}).isEmpty());
     const QList<Plan> back = fromJson(toJson({up}));
     QCOMPARE(back.size(), 1);
     QVERIFY(back[0].localSource());
-    QCOMPARE(back[0].sourcePath, QString("/data/Pictures"));
+    QCOMPARE(back[0].sourcePath, P("/data/Pictures"));
   }
 
   void localFolderSafety() {
@@ -258,8 +267,8 @@ private slots:
     QVERIFY(back[0].mode == DeleteMode::Keep);
     QVERIFY(back[0].exportGoogleDocs);
     // folders on this computer keep their full path
-    const Plan l = plan("gdrive", "A", {{QString(), "/data/Backups/A"}});
-    QCOMPARE(fromJson(toJson({l}))[0].targets[0].path, QString("/data/Backups/A"));
+    const Plan l = plan("gdrive", "A", {{QString(), P("/data/Backups/A")}});
+    QCOMPARE(fromJson(toJson({l}))[0].targets[0].path, P("/data/Backups/A"));
     QVERIFY(fromJson(toJson({l}))[0].targets[0].local());
   }
 
