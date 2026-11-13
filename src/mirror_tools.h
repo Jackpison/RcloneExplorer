@@ -66,12 +66,17 @@ private:
 class MirrorTrashDialog : public QDialog {
   Q_OBJECT
 public:
-  // `remotes`: name -> type of every remote that may hold mirror trash
-  MirrorTrashDialog(const QMap<QString, QString> &remotes, QWidget *parent = nullptr);
+  // A _SyncTrash folder: on a remote, or next to a mirrored folder on this PC.
+  struct Place {
+    QString title; // "pCloud", or "This PC · C:\\Backups"
+    QString type;  // remote type for the icon ("local" on this PC)
+    QString root;  // "pCloud:_SyncTrash" or "C:/Backups/_SyncTrash"
+  };
+  MirrorTrashDialog(const QList<Place> &places, QWidget *parent = nullptr);
 
 private:
   struct Row {
-    QString remote;
+    QString root;
     QLabel *text = nullptr;
     QStringList snapshots, old;
     qint64 files = 0, bytes = 0;

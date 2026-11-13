@@ -24,7 +24,11 @@ public:
   void setRemotes(const QMap<QString, QString> &remotes, const QStringList &order);
   bool isRunning() const { return mActive; }
 
+protected:
+  void showEvent(QShowEvent *e) override;
+
 private:
+  bool mStale = false; // a rebuild was skipped while the page was hidden
   AddTransfer mAddTransfer;
   std::function<void()> mShowTransfers;
   QMap<QString, QString> mRemotes;

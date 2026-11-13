@@ -35,6 +35,8 @@ private:
   // step 1
   QComboBox *mSource = nullptr;
   QTreeWidget *mTree = nullptr;
+  QWidget *mLocalRow = nullptr;   // shown instead of the tree for a folder on this PC
+  QLineEdit *mLocalPath = nullptr;
   QLabel *mSelected = nullptr;
   QList<QProcess *> mRunning;
   QHash<QString, QString> mSizes; // "remote:path" -> "1.4 GB · 214 files"
@@ -45,6 +47,7 @@ private:
   // step 2
   QLabel *mSourceIcon = nullptr;
   QLabel *mSourceText = nullptr;
+  QLabel *mSourceName = nullptr;
   QVBoxLayout *mDestLayout = nullptr;
   struct Dest {
     QString remote;

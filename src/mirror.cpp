@@ -1,11 +1,14 @@
 #include "mirror.h"
 #include "rclone_commands.h"
 
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QObject>
 #include <QRegularExpression>
 #include <QSet>
+#include <QStandardPaths>
 
 namespace Mirror {
 
@@ -13,11 +16,35 @@ QString trashDir() { return QStringLiteral("_SyncTrash"); }
 QString stampFormat() { return QStringLiteral("yyyy-MM-dd_HHmmss"); }
 
 QString Plan::title() const {
+  if (localSource()) {
+    return QDir::toNativeSeparators(sourcePath);
+  }
   return sourcePath.isEmpty() ? sourceRemote : sourcePath;
 }
 
 QString remotePath(const QString &remote, const QString &path) {
-  return remote + ":" + path;
+  return remote.isEmpty() ? path : remote + ":" + path;
+}
+
+QString targetPath(const Target &t) { return remotePath(t.remote, t.path); }
+
+QString cleanLocalPath(const QString &path) {
+  const QString p = QDir::fromNativeSeparators(path.trimmed());
+  return p.isEmpty() ? QString() : QDir::cleanPath(p);
+}
+
+QString trashRoot(const Target &t) {
+  if (!t.local()) {
+    return remotePath(t.remote, trashDir());
+  }
+  return QDir(QFileInfo(t.path).path()).filePath(trashDir());
+}
+
+QString trashFor(const Target &t, const QString &stamp) {
+  if (!t.local()) {
+    return remotePath(t.remote, trashDir() + "/" + stamp + "/" + t.path);
+  }
+  return QDir(trashRoot(t)).filePath(stamp + "/" + QFileInfo(t.path).fileName());
 }
 
 QString cleanPath(const QString &path, bool *ok) {
@@ -91,13 +118,92 @@ bool overlaps(const QString &a, const QString &b) {
   return x == y || x.startsWith(y + "/") || y.startsWith(x + "/");
 }
 
+// The same folder as rclone sees it: symbolic links and junctions resolved,
+// when the folder already exists.
+// A folder that does not exist yet is resolved through its nearest existing
+// parent, so "link/new" is seen inside the folder "link" points to.
+QString resolved(const QString &localPath) {
+  QString path = localPath, rest;
+  while (!path.isEmpty()) {
+    const QString real = QFileInfo(path).canonicalFilePath();
+    if (!real.isEmpty()) {
+      return rest.isEmpty() ? real : QDir::cleanPath(real + "/" + rest);
+    }
+    const QFileInfo fi(path);
+    const QString parent = fi.path();
+    if (parent == path || fi.fileName().isEmpty()) {
+      break;
+    }
+    rest = rest.isEmpty() ? fi.fileName() : fi.fileName() + "/" + rest;
+    path = parent;
+  }
+  return localPath;
+}
+
+bool localOverlaps(const QString &a, const QString &b) {
+  return overlaps(a, b) || overlaps(resolved(a), resolved(b));
+}
+
+bool sameFolder(const QString &a, const QString &b) {
+  return a.compare(b, Qt::CaseInsensitive) == 0;
+}
+
 } // namespace
 
-QString validate(const Plan &plan, const QList<Plan> &others) {
-  if (plan.sourceRemote.isEmpty()) {
-    return QObject::tr("Choose the folder to mirror.");
+QString protectedFolder(const QString &localPath) {
+  if (localPath.isEmpty()) {
+    return QString();
   }
-  if (firstSegment(plan.sourcePath).compare(trashDir(), Qt::CaseInsensitive) == 0) {
+  QStringList guarded; // never a destination themselves; folders inside are fine
+  for (auto l : {QStandardPaths::HomeLocation, QStandardPaths::DesktopLocation,
+                 QStandardPaths::DocumentsLocation, QStandardPaths::DownloadLocation,
+                 QStandardPaths::PicturesLocation, QStandardPaths::MusicLocation,
+                 QStandardPaths::MoviesLocation}) {
+    guarded << QStandardPaths::standardLocations(l);
+  }
+#ifdef Q_OS_WIN
+  for (const char *env : {"SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramData",
+                          "APPDATA", "LOCALAPPDATA", "OneDrive", "PUBLIC"}) {
+    guarded << qEnvironmentVariable(env);
+  }
+#else
+  for (const char *dir : {"/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib32", "/lib64",
+                          "/mnt", "/media", "/opt", "/proc", "/root", "/run", "/sbin", "/srv",
+                          "/sys", "/tmp", "/usr", "/var", "/Applications", "/Library",
+                          "/System", "/Users", "/Volumes", "/private"}) {
+    guarded << dir;
+  }
+#endif
+  const QString home = cleanLocalPath(QDir::homePath());
+  for (const QString &path : {localPath, resolved(localPath)}) {
+    if (QDir(path).isRoot()) {
+      return QDir::toNativeSeparators(path); // a whole drive
+    }
+    for (const QString &g : std::as_const(guarded)) {
+      const QString c = cleanLocalPath(g);
+      if (!c.isEmpty() && (sameFolder(path, c) || sameFolder(path, resolved(c)))) {
+        return QDir::toNativeSeparators(c);
+      }
+    }
+    // a folder that holds the home folder, such as C:\Users
+    if (!home.isEmpty() && home.toLower().startsWith(path.toLower() + "/")) {
+      return QDir::toNativeSeparators(path);
+    }
+  }
+  return QString();
+}
+
+QString validate(const Plan &plan, const QList<Plan> &others) {
+  if (plan.localSource()) {
+    if (plan.sourcePath.isEmpty() || !QDir::isAbsolutePath(plan.sourcePath)) {
+      return QObject::tr("Choose the folder to mirror.");
+    }
+    if (plan.sourcePath.split('/').contains(trashDir(), Qt::CaseInsensitive)) {
+      return QObject::tr("The %1 folder cannot be mirrored.").arg(trashDir());
+    }
+  } else if (plan.sourceRemote.startsWith('-')) {
+    return QObject::tr("\"%1\" is not a valid remote name.").arg(plan.sourceRemote);
+  } else if (firstSegment(plan.sourcePath).compare(trashDir(), Qt::CaseInsensitive) == 0) {
     return QObject::tr("The %1 folder cannot be mirrored.").arg(trashDir());
   }
   if (plan.targets.isEmpty()) {
@@ -105,21 +211,49 @@ QString validate(const Plan &plan, const QList<Plan> &others) {
   }
   QList<Target> seen;
   for (const Target &t : plan.targets) {
-    if (t.path.isEmpty()) {
+    if (t.local()) {
+      if (t.path.isEmpty()) {
+        return QObject::tr("Choose the folder on this PC.");
+      }
+      if (!QDir::isAbsolutePath(t.path)) {
+        return QObject::tr("Choose the full path of the folder on this PC, for example "
+                           "C:\\Backups\\Photos.");
+      }
+      if (QDir(t.path).isRoot() || QFileInfo(t.path).fileName().isEmpty()) {
+        return QObject::tr("Choose a folder on this PC, not a whole drive.");
+      }
+      if (t.path.split('/').contains(trashDir(), Qt::CaseInsensitive)) {
+        return QObject::tr("The %1 folder cannot be a destination.").arg(trashDir());
+      }
+      const QString guarded = protectedFolder(t.path);
+      if (!guarded.isEmpty()) {
+        return QObject::tr("%1 cannot be a destination: a mirror removes everything in it that "
+                           "is not in the mirrored folder. Choose or create a folder inside it, "
+                           "for example %2.")
+            .arg(guarded, QDir::toNativeSeparators(
+                              QDir(t.path).filePath(QObject::tr("Mirror"))));
+      }
+    } else if (t.remote.startsWith('-')) {
+      return QObject::tr("\"%1\" is not a valid remote name.").arg(t.remote);
+    } else if (t.path.isEmpty()) {
       return QObject::tr("Choose a destination folder on %1.").arg(t.remote);
-    }
-    if (firstSegment(t.path).compare(trashDir(), Qt::CaseInsensitive) == 0) {
+    } else if (firstSegment(t.path).compare(trashDir(), Qt::CaseInsensitive) == 0) {
       return QObject::tr("The %1 folder cannot be a destination.").arg(trashDir());
     }
-    if (t.remote.compare(plan.sourceRemote, Qt::CaseInsensitive) == 0 &&
-        overlaps(t.path, plan.sourcePath)) {
+    const auto clash = [&t](const QString &remote, const QString &path) {
+      if (remote.compare(t.remote, Qt::CaseInsensitive) != 0) {
+        return false;
+      }
+      return t.local() ? localOverlaps(path, t.path) : overlaps(path, t.path);
+    };
+    if (clash(plan.sourceRemote, plan.sourcePath)) {
       return QObject::tr("On %1, the destination \"%2\" overlaps the folder being mirrored.")
-          .arg(t.remote, t.path);
+          .arg(t.local() ? QObject::tr("this PC") : t.remote, QDir::toNativeSeparators(t.path));
     }
     for (const Target &o : seen) {
-      if (o.remote.compare(t.remote, Qt::CaseInsensitive) == 0 && overlaps(o.path, t.path)) {
+      if (clash(o.remote, o.path)) {
         return QObject::tr("On %1, \"%2\" and \"%3\" overlap. Use separate folders.")
-            .arg(t.remote, o.path, t.path);
+            .arg(t.local() ? QObject::tr("this PC") : t.remote, o.path, t.path);
       }
     }
     for (const Plan &other : others) {
@@ -127,10 +261,10 @@ QString validate(const Plan &plan, const QList<Plan> &others) {
         continue;
       }
       for (const Target &o : other.targets) {
-        if (o.remote.compare(t.remote, Qt::CaseInsensitive) == 0 && overlaps(o.path, t.path)) {
+        if (clash(o.remote, o.path)) {
           return QObject::tr("On %1, \"%2\" overlaps the mirror of %3, which uses \"%4\". "
                              "One would delete the other's files, so use separate folders.")
-              .arg(t.remote, t.path, other.title(), o.path);
+              .arg(t.local() ? QObject::tr("this PC") : t.remote, t.path, other.title(), o.path);
         }
       }
     }
@@ -155,12 +289,10 @@ QStringList filterArgs(const Plan &plan) {
 QStringList syncArgs(const Plan &plan, const Target &target, const RunOptions &o) {
   QStringList l{plan.mode == DeleteMode::Keep ? QStringLiteral("copy")
                                               : QStringLiteral("sync")};
-  l << remotePath(plan.sourceRemote, plan.sourcePath)
-    << remotePath(target.remote, target.path);
+  l << remotePath(plan.sourceRemote, plan.sourcePath) << targetPath(target);
   l << "--create-empty-src-dirs";
   if (plan.mode == DeleteMode::Trash) {
-    l << "--backup-dir"
-      << remotePath(target.remote, trashDir() + "/" + o.stamp + "/" + target.path);
+    l << "--backup-dir" << trashFor(target, o.stamp);
   }
   l << filterArgs(plan);
   if (!o.reportFile.isEmpty()) {
@@ -256,17 +388,20 @@ QList<Plan> fromJson(const QJsonArray &array) {
       p.id = QUuid::createUuid();
     }
     p.sourceRemote = o.value("sourceRemote").toString();
-    p.sourcePath = cleanPath(o.value("sourcePath").toString());
+    const QString sp = o.value("sourcePath").toString();
+    p.sourcePath = p.sourceRemote.isEmpty() ? cleanLocalPath(sp) : cleanPath(sp);
     for (const QJsonValue &tv : o.value("targets").toArray()) {
       const QJsonObject t = tv.toObject();
-      p.targets << Target{t.value("remote").toString(), cleanPath(t.value("path").toString())};
+      const QString remote = t.value("remote").toString();
+      const QString path = t.value("path").toString();
+      p.targets << Target{remote, remote.isEmpty() ? cleanLocalPath(path) : cleanPath(path)};
     }
     for (const QJsonValue &e : o.value("exclude").toArray()) {
       p.exclude << e.toString();
     }
     p.mode = modeFrom(o.value("mode").toString());
     p.exportGoogleDocs = o.value("exportGoogleDocs").toBool();
-    if (!p.sourceRemote.isEmpty()) {
+    if (!p.sourceRemote.isEmpty() || !p.sourcePath.isEmpty()) {
       plans << p;
     }
   }

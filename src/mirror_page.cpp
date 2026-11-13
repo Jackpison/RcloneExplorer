@@ -1,4 +1,5 @@
 #include "mirror_page.h"
+#include "elided_label.h"
 #include "job_widget.h"
 #include "mirror_dialog.h"
 #include "mirror_tools.h"
@@ -142,13 +143,24 @@ MirrorPage::MirrorPage(AddTransfer addTransfer, std::function<void()> showTransf
     d.exec();
   });
   QObject::connect(mTrash, &QPushButton::clicked, this, [this]() {
-    QMap<QString, QString> targets;
+    // every _SyncTrash a mirror may have filled: one per destination remote,
+    // and one next to each mirrored folder on this PC
+    QList<MirrorTrashDialog::Place> places;
+    QSet<QString> seen;
     for (const auto &p : std::as_const(mPlans)) {
       for (const auto &t : p.targets) {
-        targets.insert(t.remote, mRemotes.value(t.remote));
+        const QString root = Mirror::trashRoot(t);
+        if (seen.contains(root)) {
+          continue;
+        }
+        seen.insert(root);
+        places << MirrorTrashDialog::Place{
+            t.local() ? tr("This PC · %1").arg(QDir::toNativeSeparators(QFileInfo(t.path).path()))
+                      : t.remote,
+            t.local() ? QStringLiteral("local") : mRemotes.value(t.remote), root};
       }
     }
-    MirrorTrashDialog d(targets, this);
+    MirrorTrashDialog d(places, this);
     d.exec();
   });
   QObject::connect(mGoTransfers, &QPushButton::clicked, this, [this]() { mShowTransfers(); });
@@ -215,7 +227,7 @@ MirrorPage::Size MirrorPage::wantSize(const QString &remote, const QString &path
   if (it != mSizes.end()) {
     return it.value();
   }
-  if (!mRemotes.contains(remote)) {
+  if (!remote.isEmpty() && !mRemotes.contains(remote)) {
     Size s;
     s.state = Size::Failed;
     return s;
@@ -400,7 +412,7 @@ void MirrorPage::start(bool sync, QList<QUuid> ids, bool interactive) {
       pair.plan = p->id;
       pair.target = t;
       pair.source = Mirror::remotePath(p->sourceRemote, p->sourcePath);
-      pair.dest = Mirror::remotePath(p->targets[t].remote, p->targets[t].path);
+      pair.dest = Mirror::targetPath(p->targets[t]);
       pair.destRemote = p->targets[t].remote;
       pair.status = "waiting";
       pairs << pair;
@@ -451,13 +463,20 @@ void MirrorPage::startPair(int i) {
   const Mirror::Target target = plan->targets[pair.target];
   pair.status = "running";
   mBusy.insert(pair.destRemote);
+  // Checked again on every run: the mirrors file may have been edited by hand,
+  // or a folder turned into a link since the mirror was saved.
+  const QString problem = Mirror::validate(*plan, mPlans);
+  if (!problem.isEmpty()) {
+    pairDone(i, -1, problem);
+    return;
+  }
   Mirror::RunOptions o;
   o.dryRun = !mSync;
   o.stamp = mStamp;
   o.reportFile = mTmp->filePath(QString("report-%1.txt").arg(i));
   pair.report = o.reportFile;
   if (mSync && plan->mode == Mirror::DeleteMode::Trash) {
-    pair.trash = Mirror::remotePath(target.remote, Mirror::trashDir() + "/" + mStamp + "/" + target.path);
+    pair.trash = Mirror::trashFor(target, mStamp);
   }
   const QStringList args = Mirror::syncArgs(*plan, target, o);
 
@@ -612,12 +631,12 @@ QWidget *MirrorPage::emptyState() {
   icon->setPixmap(Theme::icon("update", Theme::accent()).pixmap(56, 56));
   icon->setAlignment(Qt::AlignCenter);
   v->addWidget(icon);
-  const bool enough = mRemotes.size() >= 2;
+  const bool enough = !mRemotes.isEmpty(); // one remote and this PC are enough
   auto *text = new QLabel(
-      enough ? tr("<b>No mirrors yet</b><br><br>Pick a folder, or any sub-folder, of one remote "
-                  "and choose where its copies should live.")
-             : tr("<b>Add at least two remotes</b><br><br>A mirror copies a folder of one remote "
-                  "to others. Click <b>New remote</b> on the Home page."));
+      enough ? tr("<b>No mirrors yet</b><br><br>Pick a folder, or any sub-folder, of a remote or "
+                  "of this PC, and choose where its copies should live.")
+             : tr("<b>Add a remote first</b><br><br>A mirror keeps copies of a folder on your "
+                  "remotes and this PC. Click <b>New remote</b> on the Home page."));
   text->setAlignment(Qt::AlignCenter);
   text->setProperty("secondary", true);
   text->setWordWrap(true);
@@ -636,8 +655,31 @@ QWidget *MirrorPage::emptyState() {
   return w;
 }
 
+void MirrorPage::showEvent(QShowEvent *e) {
+  QWidget::showEvent(e);
+  if (mStale) {
+    rebuild();
+  }
+}
+
 void MirrorPage::rebuild() {
-  const int scroll = mScroll->verticalScrollBar()->value();
+  const bool idle = !mActive;
+  mNew->setEnabled(idle && !mRemotes.isEmpty());
+  mCheckAll->setEnabled(idle && !mPlans.isEmpty());
+  mSyncAll->setEnabled(idle && !mPlans.isEmpty());
+  mTrash->setEnabled(idle && !mPlans.isEmpty());
+  // Nobody sees a hidden page: build it once it is shown again.
+  mStale = !isVisible();
+  if (mStale) {
+    return;
+  }
+  mRebuild.stop();
+
+  // Swap the list without a flash: no painting until the new cards are laid
+  // out and scrolled to where the old ones were.
+  QScrollBar *bar = mScroll->verticalScrollBar();
+  const int scroll = bar->value();
+  mScroll->setUpdatesEnabled(false);
   auto *host = new QWidget;
   auto *v = new QVBoxLayout(host);
   v->setContentsMargins(0, 4, 6, 4);
@@ -652,13 +694,15 @@ void MirrorPage::rebuild() {
   }
   mScroll->setWidget(host); // deletes the previous list
   mListHost = host;
-  QTimer::singleShot(0, this, [this, scroll]() { mScroll->verticalScrollBar()->setValue(scroll); });
-
-  const bool idle = !mActive;
-  mNew->setEnabled(idle && mRemotes.size() >= 2);
-  mCheckAll->setEnabled(idle && !mPlans.isEmpty());
-  mSyncAll->setEnabled(idle && !mPlans.isEmpty());
-  mTrash->setEnabled(idle && !mPlans.isEmpty());
+  const int width = mScroll->viewport()->width();
+  QLayout *layout = host->layout();
+  const int height = layout->hasHeightForWidth() ? layout->totalHeightForWidth(width)
+                                                 : host->sizeHint().height();
+  host->resize(width, qMax(height, mScroll->viewport()->height()));
+  layout->activate();
+  bar->setRange(0, qMax(0, host->height() - mScroll->viewport()->height()));
+  bar->setValue(scroll);
+  mScroll->setUpdatesEnabled(true);
 }
 
 QWidget *MirrorPage::planCard(const Mirror::Plan &p) {
@@ -674,20 +718,32 @@ QWidget *MirrorPage::planCard(const Mirror::Plan &p) {
   h->setContentsMargins(16, 12, 12, 12);
   h->setSpacing(12);
   auto *icon = new QLabel;
-  icon->setPixmap(Theme::remoteIcon(mRemotes.value(p.sourceRemote)).pixmap(40, 40));
+  icon->setPixmap(Theme::remoteIcon(p.localSource() ? QStringLiteral("local")
+                                                    : mRemotes.value(p.sourceRemote))
+                      .pixmap(40, 40));
   h->addWidget(icon);
   auto *texts = new QVBoxLayout;
   texts->setSpacing(1);
-  auto *title = new QLabel(crumbs(p.sourcePath, tr("%1 (whole remote)").arg(p.sourceRemote)));
+  QLabel *title;
+  if (p.localSource()) { // a folder on this PC: shortened in the middle when long
+    auto *elided = new ElidedLabel(QDir::toNativeSeparators(p.sourcePath));
+    elided->setAutoToolTip(true);
+    elided->setStyleSheet("font-weight: 700;");
+    title = elided;
+  } else {
+    title = new QLabel(crumbs(p.sourcePath, tr("%1 (whole remote)").arg(p.sourceRemote)));
+  }
   title->setObjectName("MirrorTitle");
   texts->addWidget(title);
   const Size src = wantSize(p.sourceRemote, p.sourcePath, p);
-  QString meta = p.sourceRemote + " · " +
-                 (mRemotes.contains(p.sourceRemote) ? sizeText(src) : tr("remote not found"));
+  QString meta = (p.localSource() ? tr("This PC") : p.sourceRemote) + " · " +
+                 (p.localSource() || mRemotes.contains(p.sourceRemote) ? sizeText(src)
+                                                                       : tr("remote not found"));
   if (!p.exclude.isEmpty()) {
     meta += " · " + MirrorUtil::plural(p.exclude.size(), tr("skipping %1 pattern"), tr("skipping %1 patterns"));
   }
   auto *metaLabel = new QLabel(meta);
+  metaLabel->setTextFormat(Qt::PlainText); // remote names are shown as typed
   metaLabel->setProperty("secondary", true);
   if (!p.exclude.isEmpty()) {
     metaLabel->setToolTip(p.exclude.join(", "));
@@ -756,16 +812,30 @@ QWidget *MirrorPage::destRow(const Mirror::Plan &p, int t, const Size &source) {
   arrow->setPixmap(Theme::icon("update", Theme::color("text3")).pixmap(16, 16));
   h->addWidget(arrow);
   auto *icon = new QLabel;
-  icon->setPixmap(Theme::remoteIcon(mRemotes.value(target.remote)).pixmap(30, 30));
+  icon->setPixmap(Theme::remoteIcon(target.local() ? QStringLiteral("local")
+                                                   : mRemotes.value(target.remote))
+                      .pixmap(30, 30));
   h->addWidget(icon);
   auto *texts = new QVBoxLayout;
   texts->setSpacing(1);
-  auto *name = new QLabel(QString("<b>%1</b> <span style='color:%2'>:</span> %3")
-                              .arg(target.remote.toHtmlEscaped(), Theme::color("text3").name(),
-                                   crumbs(target.path, QString())));
-  texts->addWidget(name);
+  if (target.local()) {
+    // "This PC : C:\\Backups\\…\\Taxes-2025": long paths are shortened in the middle
+    auto *line = new QHBoxLayout;
+    line->setSpacing(6);
+    line->addWidget(new QLabel(QString("<b>%1</b> <span style='color:%2'>:</span>")
+                                   .arg(tr("This PC"), Theme::color("text3").name())));
+    auto *pathLabel = new ElidedLabel(QDir::toNativeSeparators(target.path));
+    pathLabel->setAutoToolTip(true);
+    line->addWidget(pathLabel, 1);
+    texts->addLayout(line);
+  } else {
+    texts->addWidget(new QLabel(QString("<b>%1</b> <span style='color:%2'>:</span> %3")
+                                    .arg(target.remote.toHtmlEscaped(), Theme::color("text3").name(),
+                                         crumbs(target.path, QString()))));
+  }
   const Size dest = wantSize(target.remote, target.path, p);
-  auto *meta = new QLabel(mRemotes.contains(target.remote) ? sizeText(dest) : tr("remote not found"));
+  auto *meta = new QLabel(target.local() || mRemotes.contains(target.remote) ? sizeText(dest)
+                                                                              : tr("remote not found"));
   meta->setProperty("secondary", true);
   texts->addWidget(meta);
   h->addLayout(texts, 1);
@@ -858,6 +928,7 @@ QWidget *MirrorPage::destRow(const Mirror::Plan &p, int t, const Size &source) {
       });
       if (!dry && !pair->trash.isEmpty() && (c.updated.size() || c.removed.size())) {
         auto *note = new QLabel(tr("Old versions kept in %1").arg(pair->trash));
+        note->setTextFormat(Qt::PlainText);
         note->setProperty("secondary", true);
         note->setContentsMargins(70, 0, 0, 0);
         note->setWordWrap(true);
@@ -871,6 +942,7 @@ QWidget *MirrorPage::destRow(const Mirror::Plan &p, int t, const Size &source) {
     }
     for (const QString &err : pair->errors) {
       auto *e = new QLabel(err);
+      e->setTextFormat(Qt::PlainText); // rclone errors quote file names
       e->setWordWrap(true);
       e->setProperty("badge", "bad");
       v->addWidget(e);

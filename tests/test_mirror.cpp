@@ -108,6 +108,110 @@ private slots:
     QVERIFY(!d.contains("--backup-dir"));
   }
 
+  void localFolderPaths() {
+#ifdef Q_OS_WIN // a backslash is only a separator on Windows
+    QCOMPARE(cleanLocalPath(" C:\\Backups\\Photos\\ "), QString("C:/Backups/Photos"));
+#endif
+    QCOMPARE(cleanLocalPath("/home/me//Backups/"), QString("/home/me/Backups"));
+    QCOMPARE(cleanLocalPath(""), QString());
+    const Target t{QString(), "/data/Backups/Paris"};
+    QVERIFY(t.local());
+    QCOMPARE(targetPath(t), QString("/data/Backups/Paris"));
+    QCOMPARE(trashRoot(t), QString("/data/Backups/_SyncTrash"));
+    QCOMPARE(trashFor(t, "2026-11-13_094600"), QString("/data/Backups/_SyncTrash/2026-11-13_094600/Paris"));
+    const Target r{"pCloud", "Backups/Paris"};
+    QCOMPARE(trashRoot(r), QString("pCloud:_SyncTrash"));
+  }
+
+  void localFolderArgs() {
+    Plan p = plan("gdrive", "Gallery", {{QString(), "/data/Backups/Gallery"}});
+    RunOptions o;
+    o.stamp = "2026-11-13_094600";
+    const QStringList a = syncArgs(p, p.targets[0], o);
+    QCOMPARE(a.mid(0, 3), QStringList({"sync", "gdrive:Gallery", "/data/Backups/Gallery"}));
+    QCOMPARE(a.at(a.indexOf("--backup-dir") + 1),
+             QString("/data/Backups/_SyncTrash/2026-11-13_094600/Gallery"));
+  }
+
+  void localFolderValidation() {
+    QVERIFY(validate(plan("g", "A", {{QString(), "/data/Backups/A"}}), {}).isEmpty());
+    QVERIFY(!validate(plan("g", "A", {{QString(), ""}}), {}).isEmpty());              // none chosen
+    QVERIFY(!validate(plan("g", "A", {{QString(), "Backups/A"}}), {}).isEmpty());     // not a full path
+    QVERIFY(!validate(plan("g", "A", {{QString(), "/"}}), {}).isEmpty());             // a whole drive
+    QVERIFY(!validate(plan("g", "A", {{QString(), "/x/_SyncTrash/A"}}), {}).isEmpty()); // into trash
+    const Plan a = plan("g", "A", {{QString(), "/data/Backups"}});
+    QVERIFY(!validate(plan("g", "B", {{QString(), "/data/Backups/B"}}), {a}).isEmpty()); // overlap
+    QVERIFY(validate(plan("g", "B", {{QString(), "/data/Other/B"}}), {a}).isEmpty());
+    // a local folder and a remote folder with the same name do not clash
+    QVERIFY(validate(plan("g", "B", {{"p", "data/Backups"}}), {a}).isEmpty());
+  }
+
+  void localFolderSource() {
+    const Plan up = plan(QString(), "/data/Pictures", {{"pCloud", "Pictures"}});
+    QVERIFY(up.localSource());
+    QVERIFY(validate(up, {}).isEmpty());
+    QCOMPARE(syncArgs(up, up.targets[0], {}).mid(0, 3),
+             QStringList({"sync", "/data/Pictures", "pCloud:Pictures"}));
+    QVERIFY(!validate(plan(QString(), "Pictures", {{"p", "X"}}), {}).isEmpty());      // not a full path
+    QVERIFY(!validate(plan(QString(), "", {{"p", "X"}}), {}).isEmpty());              // none chosen
+    // from one folder on this PC to another: fine apart, refused when nested
+    QVERIFY(validate(plan(QString(), "/data/Pictures", {{QString(), "/backup/Pictures"}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), "/data/Pictures", {{QString(), "/data/Pictures/copy"}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), "/data", {{QString(), "/data/copy"}}), {}).isEmpty());
+    const QList<Plan> back = fromJson(toJson({up}));
+    QCOMPARE(back.size(), 1);
+    QVERIFY(back[0].localSource());
+    QCOMPARE(back[0].sourcePath, QString("/data/Pictures"));
+  }
+
+  void localFolderSafety() {
+    // a mirror empties its destination of everything else: never the home
+    // folder, the usual personal folders, a system folder, or a folder above home
+    const QString home = QDir::fromNativeSeparators(QDir::homePath());
+    QVERIFY(!protectedFolder(home).isEmpty());
+    QVERIFY(!protectedFolder(QFileInfo(home).path()).isEmpty()); // e.g. C:/Users
+    const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    if (!docs.isEmpty()) {
+      QVERIFY(!protectedFolder(QDir::fromNativeSeparators(docs)).isEmpty());
+      QVERIFY(protectedFolder(QDir::fromNativeSeparators(docs) + "/Backup").isEmpty());
+    }
+    QVERIFY(protectedFolder(home + "/Mirrors/Photos").isEmpty());
+    QVERIFY(!validate(plan("g", "A", {{QString(), home}}), {}).isEmpty());
+    QVERIFY(validate(plan("g", "A", {{QString(), home + "/Mirrors/A"}}), {}).isEmpty());
+#ifndef Q_OS_WIN
+    QVERIFY(!protectedFolder("/etc").isEmpty());
+    QVERIFY(!protectedFolder("/usr").isEmpty());
+    QVERIFY(protectedFolder("/srv/backups").isEmpty());
+#endif
+    // a remote name that rclone would read as an option is refused
+    QVERIFY(!validate(plan("--config", "A", {{"p", "B"}}), {}).isEmpty());
+    QVERIFY(!validate(plan("g", "A", {{"-x", "B"}}), {}).isEmpty());
+    // and so is a hand-edited relative path for this PC
+    const QList<Plan> edited = fromJson(QJsonDocument::fromJson(
+        R"([{"sourceRemote":"g","sourcePath":"A","targets":[{"remote":"","path":"--delete-before"}]}])").array());
+    QCOMPARE(edited.size(), 1);
+    QVERIFY(!validate(edited[0], {}).isEmpty());
+  }
+
+  void localFolderLinks() {
+#ifdef Q_OS_WIN
+    QSKIP("symbolic links need extra rights on Windows");
+#else
+    // a destination that is a link to the mirrored folder is the same folder
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString src = dir.filePath("src"), link = dir.filePath("link");
+    QVERIFY(QDir().mkpath(src));
+    QVERIFY(QFile::link(src, link));
+    QVERIFY(!validate(plan(QString(), src, {{QString(), link}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), src, {{QString(), link + "/inside"}}), {}).isEmpty());
+    // and two mirrors cannot reach one folder through a link either
+    const Plan a = plan("g", "A", {{QString(), src}});
+    QVERIFY(!validate(plan("g", "B", {{QString(), link}}), {a}).isEmpty());
+    QVERIFY(validate(plan("g", "B", {{QString(), dir.filePath("other")}}), {a}).isEmpty());
+#endif
+  }
+
   void reportIsParsed() {
     const QByteArray r = "+ new.jpg\n* changed.jpg\r\n- gone.jpg\n= same.jpg\n! broken.jpg\n"
                          "+ sub folder/b.jpg\n\nnonsense\n";
@@ -141,6 +245,10 @@ private slots:
     QCOMPARE(back[0].exclude, p.exclude);
     QVERIFY(back[0].mode == DeleteMode::Keep);
     QVERIFY(back[0].exportGoogleDocs);
+    // folders on this computer keep their full path
+    const Plan l = plan("gdrive", "A", {{QString(), "/data/Backups/A"}});
+    QCOMPARE(fromJson(toJson({l}))[0].targets[0].path, QString("/data/Backups/A"));
+    QVERIFY(fromJson(toJson({l}))[0].targets[0].local());
   }
 
   // Runs the generated command lines through a real rclone against local
@@ -175,13 +283,14 @@ private slots:
 
     Plan p = plan("src", "Gallery", {{"dst", "Backups/Gallery"}});
     p.exclude = {"*.tmp"};
-    auto run = [&](bool dry, const QString &stamp) {
+    const Target pc{QString(), cleanLocalPath(root.filePath("pc/Backups/Gallery"))};
+    auto runTo = [&](const Target &target, bool dry, const QString &stamp) {
       RunOptions o;
       o.dryRun = dry;
       o.stamp = stamp;
       o.reportFile = root.filePath("report.txt");
       QProcess proc;
-      proc.start(rclone, QStringList{"--config", conf} + syncArgs(p, p.targets[0], o));
+      proc.start(rclone, QStringList{"--config", conf} + syncArgs(p, target, o));
       if (!proc.waitForFinished(60000) || proc.exitCode() != 0) {
         qWarning() << proc.readAllStandardError();
         return Changes{};
@@ -192,6 +301,7 @@ private slots:
       }
       return parseReport(rep.readAll(), p.mode);
     };
+    auto run = [&](bool dry, const QString &stamp) { return runTo(p.targets[0], dry, stamp); };
     const QString dest = root.filePath("dst/Backups/Gallery");
 
     Changes c = run(true, "2026-01-01_000000");
@@ -212,6 +322,28 @@ private slots:
     const QString trash = root.filePath("dst/_SyncTrash/2026-01-02_000000/Backups/Gallery");
     QVERIFY(QFileInfo::exists(trash + "/Paris/b.jpg"));
     QVERIFY(QFileInfo::exists(trash + "/a.jpg"));
+
+    // the same mirror into a folder on this computer
+    c = runTo(pc, false, "2026-01-03_000000");
+    QCOMPARE(c.added.size(), 1);
+    QVERIFY(QFileInfo::exists(pc.path + "/a.jpg"));
+    QVERIFY(!QFileInfo::exists(pc.path + "/scratch.tmp"));
+    write("a.jpg", "changed again");
+    c = runTo(pc, false, "2026-01-04_000000");
+    QCOMPARE(c.updated, QStringList({"a.jpg"}));
+    QVERIFY(QFileInfo::exists(root.filePath("pc/Backups/_SyncTrash/2026-01-04_000000/Gallery/a.jpg")));
+
+    // a folder on this PC as the source, mirrored to a remote
+    Plan up = plan(QString(), cleanLocalPath(root.filePath("src/Gallery")), {{"dst", "FromPC"}});
+    up.exclude = {"*.tmp"};
+    RunOptions o;
+    o.stamp = "2026-01-05_000000";
+    QProcess proc;
+    proc.start(rclone, QStringList{"--config", conf} + syncArgs(up, up.targets[0], o));
+    QVERIFY(proc.waitForFinished(60000));
+    QCOMPARE(proc.exitCode(), 0);
+    QVERIFY(QFileInfo::exists(root.filePath("dst/FromPC/a.jpg")));
+    QVERIFY(!QFileInfo::exists(root.filePath("dst/FromPC/scratch.tmp")));
   }
 };
 

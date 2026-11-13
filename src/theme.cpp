@@ -947,6 +947,11 @@ public:
   }
 
   void paint(QPainter *p, const QRect &rect, QIcon::Mode mode, QIcon::State state) override {
+    const qreal dpr = p->device() ? p->device()->devicePixelRatioF() : 1.0;
+    p->drawPixmap(rect, scaledPixmap(rect.size(), mode, state, dpr));
+  }
+
+  void draw(QPainter *p, const QRect &rect, QIcon::Mode mode, QIcon::State state) {
     if (gDark && mNearlyBlack) {
       p->save();
       p->setRenderHint(QPainter::Antialiasing);
@@ -968,23 +973,35 @@ public:
 
   QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state,
                        qreal scale) override {
+    // Drawn once per size, mode and theme: lists repaint these a lot.
+    const QString key = QString("%1x%2@%3/%4/%5/%6")
+                            .arg(size.width()).arg(size.height()).arg(scale)
+                            .arg(int(mode)).arg(int(state)).arg(gDark && mNearlyBlack);
+    if (const QPixmap *hit = mCache.object(key)) {
+      return *hit;
+    }
     QPixmap pm(size * scale);
     pm.fill(Qt::transparent);
     {
       QPainter p(&pm);
-      paint(&p, QRect(QPoint(0, 0), size * scale), mode, state);
+      draw(&p, QRect(QPoint(0, 0), size * scale), mode, state);
     }
     pm.setDevicePixelRatio(scale);
+    mCache.insert(key, new QPixmap(pm), 1);
     return pm;
   }
 
-  QIconEngine *clone() const override { return new LogoIconEngine(*this); }
+  QIconEngine *clone() const override { return new LogoIconEngine(mFile, mIcon, mNearlyBlack); }
   QString key() const override { return "logo"; }
 
 private:
+  LogoIconEngine(const QString &file, const QIcon &icon, bool nearlyBlack)
+      : mFile(file), mIcon(icon), mNearlyBlack(nearlyBlack) {}
+
   QString mFile;
   QIcon mIcon;
   bool mNearlyBlack = false;
+  QCache<QString, QPixmap> mCache{24};
 };
 
 static QIcon buildRemoteIcon(const QString &type) {

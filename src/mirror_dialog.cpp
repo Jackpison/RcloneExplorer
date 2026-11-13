@@ -1,4 +1,5 @@
 #include "mirror_dialog.h"
+#include "elided_label.h"
 #include "mirror_tools.h"
 #include "natural_sort.h"
 #include "rclone_output.h"
@@ -10,6 +11,18 @@ enum { PathRole = Qt::UserRole, PlaceholderRole = Qt::UserRole + 1 };
 
 QString joinPath(const QString &parent, const QString &name) {
   return parent.isEmpty() ? name : parent + "/" + name;
+}
+
+// The cleaned folder of a destination card: a remote path, or a full path on
+// this PC (empty remote).
+QString cleanFor(const QString &remote, const QString &text, bool *ok = nullptr) {
+  if (remote.isEmpty()) {
+    if (ok) {
+      *ok = true;
+    }
+    return Mirror::cleanLocalPath(text);
+  }
+  return Mirror::cleanPath(text, ok);
 }
 
 QTreeWidgetItem *folderItem(const QString &name, const QString &path, const QIcon &icon) {
@@ -56,6 +69,7 @@ MirrorDialog::MirrorDialog(const QMap<QString, QString> &remotes, const QStringL
   v->addWidget(mPages, 1);
 
   mError = new QLabel;
+  mError->setTextFormat(Qt::PlainText); // messages quote folder names
   mError->setWordWrap(true);
   mError->setStyleSheet(QString("color: %1;").arg(Theme::color("critical").name()));
   mError->hide();
@@ -124,8 +138,9 @@ QWidget *MirrorDialog::buildFolderStep() {
   auto *page = new QWidget;
   auto *v = new QVBoxLayout(page);
   v->setContentsMargins(0, 0, 0, 0);
-  auto *hint = new QLabel(tr("Choose the folder to mirror. Open folders with the arrow; any "
-                             "folder or sub-folder works, or the whole remote."));
+  auto *hint = new QLabel(tr("Choose the folder to mirror: any folder or sub-folder of a remote "
+                             "(open folders with the arrow), a whole remote, or a folder on "
+                             "this PC."));
   hint->setWordWrap(true);
   hint->setProperty("secondary", true);
   v->addWidget(hint);
@@ -135,8 +150,50 @@ QWidget *MirrorDialog::buildFolderStep() {
   for (const QString &name : std::as_const(mOrder)) {
     mSource->addItem(Theme::remoteIcon(mRemotes.value(name)), name, name);
   }
+  mSource->addItem(Theme::remoteIcon("local"), tr("This PC"), QString());
   form->addRow(tr("Source"), mSource);
   v->addLayout(form);
+
+  // a folder on this PC: typed or picked, no tree
+  mLocalRow = new QWidget;
+  auto *lv = new QVBoxLayout(mLocalRow);
+  lv->setContentsMargins(0, 0, 0, 0);
+  auto *localLabel = new QLabel(tr("Folder on this PC"));
+  localLabel->setProperty("secondary", true);
+  lv->addWidget(localLabel);
+  auto *lrow = new QHBoxLayout;
+  mLocalPath = new QLineEdit;
+#ifdef Q_OS_WIN
+  mLocalPath->setPlaceholderText(tr("for example: C:\\Users\\you\\Pictures"));
+#else
+  mLocalPath->setPlaceholderText(tr("for example: /home/you/Pictures"));
+#endif
+  lrow->addWidget(mLocalPath, 1);
+  auto *localBrowse = new QPushButton(Theme::icon("folder"), tr("Browse…"));
+  lrow->addWidget(localBrowse);
+  lv->addLayout(lrow);
+  lv->addStretch(1);
+  v->addWidget(mLocalRow, 1);
+  mLocalRow->hide();
+  // checked while typing, once the typing pauses
+  auto *typing = new QTimer(this);
+  typing->setSingleShot(true);
+  typing->setInterval(350);
+  QObject::connect(typing, &QTimer::timeout, this, [this]() { folderSelected(); });
+  QObject::connect(mLocalPath, &QLineEdit::textEdited, typing, qOverload<>(&QTimer::start));
+  QObject::connect(mLocalPath, &QLineEdit::editingFinished, this, [this, typing]() {
+    typing->stop();
+    folderSelected();
+  });
+  QObject::connect(localBrowse, &QPushButton::clicked, this, [this]() {
+    const QString current = Mirror::cleanLocalPath(mLocalPath->text());
+    const QString picked = QFileDialog::getExistingDirectory(
+        this, tr("Choose the folder to mirror"), current.isEmpty() ? QDir::homePath() : current);
+    if (!picked.isEmpty()) {
+      mLocalPath->setText(QDir::toNativeSeparators(picked));
+      folderSelected();
+    }
+  });
 
   mTree = new QTreeWidget;
   mTree->setColumnCount(2);
@@ -182,8 +239,14 @@ void MirrorDialog::setSource() {
   stopLoading();
   mTree->clear();
   const QString remote = sourceRemote();
-  if (remote.isEmpty()) {
-    mSelected->setText(tr("No remotes are configured yet."));
+  const bool local = remote.isEmpty();
+  mTree->setVisible(!local);
+  mLocalRow->setVisible(local);
+  if (local) {
+    if (mEditing && mPlan.localSource() && mLocalPath->text().isEmpty()) {
+      mLocalPath->setText(QDir::toNativeSeparators(mPlan.sourcePath));
+    }
+    folderSelected();
     return;
   }
   auto *root = folderItem(tr("%1 (whole remote)").arg(remote), QString(),
@@ -257,6 +320,46 @@ void MirrorDialog::loadFolder(QTreeWidgetItem *item) {
 }
 
 void MirrorDialog::folderSelected() {
+  if (sourceRemote().isEmpty()) { // a folder on this PC
+    const QString p = Mirror::cleanLocalPath(mLocalPath->text());
+    const bool valid = QDir::isAbsolutePath(p) && !QDir(p).isRoot();
+    mSourcePath = valid ? p : QString();
+    if (mNext) {
+      mNext->setEnabled(valid || mPages->currentIndex() == 1);
+    }
+    if (!valid) {
+      mSelected->setText(tr("Choose a folder on this PC."));
+      return;
+    }
+    const QString shown = "<b>" + QDir::toNativeSeparators(p).toHtmlEscaped() + "</b>";
+    if (mSizes.contains(p)) {
+      mSelected->setText(tr("Mirror %1 · %2").arg(shown, mSizes.value(p)));
+      return;
+    }
+    mSelected->setText(tr("Mirror %1 · counting…").arg(shown));
+    QProcess *proc = MirrorUtil::runRclone(
+        this, {"size", "--json", p}, [this, p, shown](int code, const QByteArray &out, const QString &err) {
+          QString text = err.contains("not found", Qt::CaseInsensitive) ? tr("folder not found")
+                                                                        : tr("size unavailable");
+          if (code == 0) {
+            const QJsonObject o = QJsonDocument::fromJson(out).object();
+            text = MirrorUtil::niceSize(o.value("bytes").toInteger()) + " · " +
+                   MirrorUtil::countText(o.value("count").toInteger());
+            mSizes.insert(p, text);
+          }
+          if (sourceRemote().isEmpty() && mSourcePath == p) {
+            const bool missing = code != 0 && err.contains("not found", Qt::CaseInsensitive);
+            mSelected->setText(missing ? tr("%1 was not found on this PC.").arg(shown)
+                                       : tr("Mirror %1 · %2").arg(shown, text));
+            if (missing && mNext && mPages->currentIndex() == 0) {
+              mNext->setEnabled(false);
+            }
+          }
+        });
+    mRunning << proc;
+    QObject::connect(proc, &QObject::destroyed, this, [this, proc]() { mRunning.removeAll(proc); });
+    return;
+  }
   QTreeWidgetItem *it = mTree->currentItem();
   const bool valid = it && !it->data(0, PlaceholderRole).toBool();
   if (mNext) { // not created yet while the dialog is being built
@@ -314,9 +417,17 @@ QWidget *MirrorDialog::buildDestinationStep() {
   sh->setSpacing(12);
   mSourceIcon = new QLabel;
   sh->addWidget(mSourceIcon);
+  auto *texts = new QVBoxLayout;
+  texts->setSpacing(1);
   mSourceText = new QLabel;
-  mSourceText->setTextFormat(Qt::RichText);
-  sh->addWidget(mSourceText, 1);
+  mSourceText->setTextFormat(Qt::PlainText);
+  texts->addWidget(mSourceText);
+  auto *name = new ElidedLabel; // a long path is shortened in the middle
+  name->setAutoToolTip(true);
+  name->setStyleSheet("font-weight: 700;");
+  mSourceName = name;
+  texts->addWidget(mSourceName);
+  sh->addLayout(texts, 1);
   auto *change = new QPushButton(tr("Change"));
   QObject::connect(change, &QPushButton::clicked, this, [this]() { showStep(0); });
   sh->addWidget(change);
@@ -413,11 +524,14 @@ QWidget *MirrorDialog::buildDestinationStep() {
 void MirrorDialog::fillDestinations() {
   const QString remote = sourceRemote();
   const QString path = selectedPath();
-  mSourceIcon->setPixmap(Theme::remoteIcon(mRemotes.value(remote)).pixmap(36, 36));
-  mSourceText->setText(
-      QString("<span style='color:%1'>%2</span><br><b>%3</b>")
-          .arg(Theme::color("text2").name(), tr("Source · %1").arg(remote).toHtmlEscaped(),
-               (path.isEmpty() ? tr("whole remote") : path).toHtmlEscaped()));
+  const bool localSource = remote.isEmpty();
+  mSourceIcon->setPixmap(
+      Theme::remoteIcon(localSource ? QStringLiteral("local") : mRemotes.value(remote)).pixmap(36, 36));
+  mSourceText->setStyleSheet(QString("color: %1;").arg(Theme::color("text2").name()));
+  mSourceText->setText(tr("Source · %1").arg(localSource ? tr("This PC") : remote));
+  mSourceName->setText(localSource      ? QDir::toNativeSeparators(path)
+                       : path.isEmpty() ? tr("whole remote")
+                                        : path);
   mDocs->setVisible(mRemotes.value(remote) == "drive");
 
   // keep what was typed for remotes that stay in the list
@@ -427,7 +541,7 @@ void MirrorDialog::fillDestinations() {
   }
   if (previous.isEmpty()) {
     for (const Mirror::Target &t : std::as_const(mPlan.targets)) {
-      previous.insert(t.remote, {true, t.path});
+      previous.insert(t.remote, {true, t.local() ? QDir::toNativeSeparators(t.path) : t.path});
     }
   }
   while (QLayoutItem *item = mDestLayout->takeAt(0)) {
@@ -436,14 +550,23 @@ void MirrorDialog::fillDestinations() {
   }
   mDests.clear();
 
-  const QString defaultPath = path.isEmpty() ? remote : path;
+  // a cloud copy of C:\\Users\\you\\Pictures goes to "Pictures" by default
+  const QString defaultPath = localSource ? QFileInfo(path).fileName() : path.isEmpty() ? remote : path;
+  // the other remotes, then a folder on this PC (empty name)
+  struct Entry {
+    QString name, type, title;
+  };
+  QList<Entry> entries;
   for (const QString &rname : std::as_const(mOrder)) {
-    const auto it = mRemotes.constFind(rname);
-    if (it == mRemotes.cend() || it.key() == remote) {
-      continue;
+    if (mRemotes.contains(rname) && rname != remote) {
+      entries << Entry{rname, mRemotes.value(rname), rname};
     }
+  }
+  entries << Entry{QString(), QStringLiteral("local"), tr("This PC")};
+  for (const Entry &entry : std::as_const(entries)) {
+    const bool local = entry.name.isEmpty();
     Dest d;
-    d.remote = it.key();
+    d.remote = entry.name;
     auto *card = new QWidget;
     card->setProperty("card", true);
     card->setAttribute(Qt::WA_StyledBackground);
@@ -454,9 +577,9 @@ void MirrorDialog::fillDestinations() {
     d.on = new QCheckBox;
     top->addWidget(d.on);
     auto *icon = new QLabel;
-    icon->setPixmap(Theme::remoteIcon(it.value()).pixmap(30, 30));
+    icon->setPixmap(Theme::remoteIcon(entry.type).pixmap(30, 30));
     top->addWidget(icon);
-    auto *name = new QLabel(QString("<b>%1</b>").arg(it.key().toHtmlEscaped()));
+    auto *name = new QLabel(QString("<b>%1</b>").arg(entry.title.toHtmlEscaped()));
     top->addWidget(name, 1);
     cv->addLayout(top);
 
@@ -464,39 +587,61 @@ void MirrorDialog::fillDestinations() {
     auto *bv = new QVBoxLayout(d.body);
     bv->setContentsMargins(36, 0, 0, 0);
     bv->setSpacing(4);
-    auto *label = new QLabel(tr("Destination folder on %1").arg(it.key()));
+    auto *label = new QLabel(local ? tr("Folder on this PC")
+                                   : tr("Destination folder on %1").arg(entry.name));
     label->setProperty("secondary", true);
     bv->addWidget(label);
     auto *row = new QHBoxLayout;
     d.path = new QLineEdit;
-    d.path->setPlaceholderText(tr("for example: Backups/Photos"));
+#ifdef Q_OS_WIN
+    d.path->setPlaceholderText(local ? tr("for example: C:\\Backups\\Photos")
+                                     : tr("for example: Backups/Photos"));
+#else
+    d.path->setPlaceholderText(local ? tr("for example: /home/you/Backups/Photos")
+                                     : tr("for example: Backups/Photos"));
+#endif
     row->addWidget(d.path, 1);
-    auto *browse = new QPushButton(tr("Remote…"));
+    auto *browse = new QPushButton(local ? tr("Browse…") : tr("Remote…"));
     browse->setIcon(Theme::icon("folder"));
     row->addWidget(browse);
     bv->addLayout(row);
     d.info = new QLabel;
+    d.info->setTextFormat(Qt::PlainText);
     d.info->setWordWrap(true);
     bv->addWidget(d.info);
     cv->addWidget(d.body);
     mDestLayout->addWidget(card);
 
-    const auto prev = previous.value(it.key(), {false, QString()});
+    const auto prev = previous.value(entry.name, {false, QString()});
     d.on->setChecked(prev.first);
-    d.path->setText(prev.second.isEmpty() ? defaultPath : prev.second);
+    d.path->setText(!prev.second.isEmpty() ? prev.second : local ? QString() : defaultPath);
     d.body->setVisible(prev.first);
     const int i = int(mDests.size());
     mDests << d;
 
-    QObject::connect(d.on, &QCheckBox::toggled, this, [this, i](bool on) {
+    QObject::connect(d.on, &QCheckBox::toggled, this, [this, i, local, browse](bool on) {
       mDests[i].body->setVisible(on);
-      if (on && mDests[i].state == Dest::Unknown) {
+      if (on && local && mDests[i].path->text().trimmed().isEmpty()) {
+        browse->click(); // nothing chosen yet: open the folder picker straight away
+      } else if (on && mDests[i].state == Dest::Unknown) {
         checkDest(i);
       }
     });
     QObject::connect(d.path, &QLineEdit::editingFinished, this, [this, i]() { checkDest(i); });
+    QObject::connect(d.path, &QLineEdit::textChanged, mError, &QWidget::hide); // an old complaint
     QObject::connect(browse, &QPushButton::clicked, this, [this, i]() {
       Dest &d = mDests[i];
+      if (d.remote.isEmpty()) { // a folder on this PC
+        const QString current = Mirror::cleanLocalPath(d.path->text());
+        const QString picked = QFileDialog::getExistingDirectory(
+            this, tr("Choose a folder on this PC"),
+            current.isEmpty() ? QDir::homePath() : current);
+        if (!picked.isEmpty()) {
+          d.path->setText(QDir::toNativeSeparators(picked));
+          checkDest(i);
+        }
+        return;
+      }
       RemoteFolderDialog pick(Mirror::remotePath(d.remote, d.path->text()), this);
       if (pick.exec() != QDialog::Accepted) {
         return;
@@ -527,10 +672,10 @@ void MirrorDialog::fillDestinations() {
 void MirrorDialog::checkDest(int i) {
   Dest &d = mDests[i];
   bool ok = true;
-  const QString path = Mirror::cleanPath(d.path->text(), &ok);
+  const QString path = cleanFor(d.remote, d.path->text(), &ok);
   const int gen = ++mSerial;
   d.generation = gen;
-  if (!ok || path.isEmpty()) {
+  if (!ok || path.isEmpty() || (d.remote.isEmpty() && !QDir::isAbsolutePath(path))) {
     d.state = Dest::Unknown;
     showDestInfo(i);
     return;
@@ -582,7 +727,7 @@ void MirrorDialog::showDestInfo(int i) {
     bool current = false; // the copy this mirror already keeps
     for (const Mirror::Target &t : std::as_const(mPlan.targets)) {
       current = current || (mEditing && t.remote == d.remote &&
-                            t.path == Mirror::cleanPath(d.path->text()) &&
+                            t.path == cleanFor(d.remote, d.path->text()) &&
                             mPlan.sourceRemote == sourceRemote() && mPlan.sourcePath == mSourcePath);
     }
     if (current) {
@@ -598,6 +743,15 @@ void MirrorDialog::showDestInfo(int i) {
     }
     break;
   }
+  }
+  if (d.remote.isEmpty()) {
+    bool ok = false;
+    const QString guarded = Mirror::protectedFolder(cleanFor(d.remote, d.path->text(), &ok));
+    if (ok && !guarded.isEmpty()) {
+      text = tr("%1 cannot be a mirror destination: everything else in it would be removed. "
+                "Choose a folder inside it.").arg(guarded);
+      color = Theme::color("critical").name();
+    }
   }
   d.info->setStyleSheet(QString("color: %1;").arg(color));
   d.info->setText(text);
@@ -617,7 +771,7 @@ void MirrorDialog::save() {
       continue;
     }
     bool ok = true;
-    const QString path = Mirror::cleanPath(d.path->text(), &ok);
+    const QString path = cleanFor(d.remote, d.path->text(), &ok);
     if (!ok) {
       return fail(tr("The folder on %1 is not valid.").arg(d.remote));
     }

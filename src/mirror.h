@@ -22,9 +22,13 @@ namespace Mirror {
 QString trashDir();
 QString stampFormat(); // "yyyy-MM-dd_HHmmss"
 
+// A destination: a folder on a remote, or, when `remote` is empty, a folder
+// on this computer (`path` is then absolute: "C:/Backups/Photos" or
+// "/home/me/Backups", always with forward slashes).
 struct Target {
-  QString remote; // without the colon
+  QString remote; // without the colon; empty = this computer
   QString path;   // folder on that remote, never empty
+  bool local() const { return remote.isEmpty(); }
 };
 
 enum class DeleteMode {
@@ -35,18 +39,32 @@ enum class DeleteMode {
 
 struct Plan {
   QUuid id;
-  QString sourceRemote; // without the colon
-  QString sourcePath;   // empty = the whole remote
+  QString sourceRemote; // without the colon; empty = a folder on this computer
+  QString sourcePath;   // empty = the whole remote; absolute on this computer
   QList<Target> targets;
   QStringList exclude;  // rclone filter patterns, e.g. "*.tmp"
   DeleteMode mode = DeleteMode::Trash;
   bool exportGoogleDocs = false; // false: skip Docs/Sheets/Slides
 
-  // "Gallery/Trips/Paris", or the remote name for a whole remote
+  // "Gallery/Trips/Paris", the remote name for a whole remote, or the full
+  // path of a folder on this computer
   QString title() const;
+  bool localSource() const { return sourceRemote.isEmpty(); }
 };
 
+// "remote:path", or just the path for a folder on this computer
 QString remotePath(const QString &remote, const QString &path);
+QString targetPath(const Target &t);
+
+// "C:\Backups\Photos\" -> "C:/Backups/Photos"; "" stays "".
+QString cleanLocalPath(const QString &path);
+
+// Where a sync keeps the old versions of files it removes or replaces:
+// remote:_SyncTrash/<stamp>/<path> on a remote, or <parent>/_SyncTrash/<stamp>/<folder>
+// next to a folder on this computer (a drive's top level is not ours to fill).
+QString trashFor(const Target &t, const QString &stamp);
+// The _SyncTrash folder that holds those snapshots.
+QString trashRoot(const Target &t);
 
 // "\a//b/ " -> "a/b"; ".." segments make it invalid (empty + *ok = false).
 QString cleanPath(const QString &path, bool *ok = nullptr);
@@ -54,6 +72,11 @@ QString cleanPath(const QString &path, bool *ok = nullptr);
 // Trims, drops empty lines, "# comments" and duplicates. Returns an error
 // text for patterns rclone would refuse (or that are too long / too many).
 QStringList cleanExcludes(const QStringList &in, QString *error);
+
+// For a folder on this PC: the protected folder it is (home, Desktop,
+// Documents, a system folder, or one that holds the home folder), or "" when it
+// may be a destination. Folders inside a protected folder are fine.
+QString protectedFolder(const QString &localPath);
 
 // Checks `plan` (already cleaned) against the other plans. Destinations that
 // overlap would delete each other's files, so they are refused. Returns an

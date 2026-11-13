@@ -1,4 +1,5 @@
 #include "mirror_tools.h"
+#include "elided_label.h"
 #include "rclone_output.h"
 #include "theme.h"
 #include "utils.h"
@@ -271,7 +272,7 @@ void MirrorHistoryDialog::fill() {
 
 // ------------------------------------------------------- Clean up trash --
 
-MirrorTrashDialog::MirrorTrashDialog(const QMap<QString, QString> &remotes, QWidget *parent)
+MirrorTrashDialog::MirrorTrashDialog(const QList<Place> &places, QWidget *parent)
     : QDialog(parent) {
   setWindowTitle(tr("Clean up trash"));
   resize(600, 460);
@@ -299,22 +300,24 @@ MirrorTrashDialog::MirrorTrashDialog(const QMap<QString, QString> &remotes, QWid
   auto *lv = new QVBoxLayout(list);
   lv->setContentsMargins(0, 6, 0, 0);
   lv->setSpacing(10);
-  for (auto it = remotes.cbegin(); it != remotes.cend(); ++it) {
+  for (const Place &place : places) {
     Row r;
-    r.remote = it.key();
+    r.root = place.root;
     auto *row = new QWidget;
     auto *h = new QHBoxLayout(row);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(12);
     auto *icon = new QLabel;
-    icon->setPixmap(Theme::remoteIcon(it.value()).pixmap(32, 32));
+    icon->setPixmap(Theme::remoteIcon(place.type).pixmap(32, 32));
     h->addWidget(icon);
     auto *texts = new QVBoxLayout;
     texts->setSpacing(0);
-    auto *name = new QLabel(it.key());
+    auto *name = new ElidedLabel(place.title); // long folder paths shortened in the middle
+    name->setAutoToolTip(true);
     name->setStyleSheet("font-weight: 600;");
     texts->addWidget(name);
     r.text = new QLabel;
+    r.text->setTextFormat(Qt::PlainText); // may hold an rclone error
     r.text->setProperty("secondary", true);
     r.text->setWordWrap(true);
     texts->addWidget(r.text);
@@ -375,9 +378,9 @@ void MirrorTrashDialog::scan() {
 }
 
 void MirrorTrashDialog::scanRow(int i, int gen) {
-  const QString remote = mRows[i].remote;
+  const QString root = mRows[i].root;
   MirrorUtil::runRclone(
-      this, {"lsjson", "--dirs-only", "--no-mimetype", Mirror::remotePath(remote, Mirror::trashDir())},
+      this, {"lsjson", "--dirs-only", "--no-mimetype", root},
       [this, i, gen](int code, const QByteArray &out, const QString &err) {
         if (gen != mGeneration) {
           return;
@@ -411,7 +414,7 @@ void MirrorTrashDialog::sizeNext(int i, int k, int gen) {
     update();
     return;
   }
-  const QString path = Mirror::remotePath(r.remote, Mirror::trashDir() + "/" + r.old[k]);
+  const QString path = r.root + "/" + r.old[k];
   MirrorUtil::runRclone(this, {"size", "--json", path},
                         [this, i, k, gen](int code, const QByteArray &out, const QString &) {
                           if (gen != mGeneration) {
@@ -459,7 +462,7 @@ void MirrorTrashDialog::cleanNext(int i, int k) {
     update();
     return;
   }
-  const QString path = Mirror::remotePath(r.remote, Mirror::trashDir() + "/" + r.old[k]);
+  const QString path = r.root + "/" + r.old[k];
   MirrorUtil::runRclone(this, {"purge", path},
                         [this, i, k](int code, const QByteArray &, const QString &err) {
                           if (code != 0) {
