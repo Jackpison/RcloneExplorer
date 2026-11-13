@@ -315,6 +315,22 @@ QToolButton[status="paused"] { color: @text2; background: @tile; }
 QToolButton[status="done"] { color: @success; background: @successTint; }
 QToolButton[status="error"] { color: @critical; background: @criticalTint; }
 
+/* ---------- Mirror page ---------- */
+QWidget#MirrorDests { background: @headerBg; border: none; border-top: 1px solid @divider;
+  border-bottom-left-radius: 11px; border-bottom-right-radius: 11px; }
+QLabel#MirrorTitle { font-size: 13pt; }
+QLabel[badge] { border-radius: 9px; padding: 2px 10px; font-weight: 600; font-size: 10.5pt; }
+QLabel[badge="ok"] { color: @success; background: @successTint; }
+QLabel[badge="warn"] { color: @accentText; background: @accentTint; }
+QLabel[badge="new"] { color: @text2; background: @tile; }
+QLabel[badge="bad"] { color: @critical; background: @criticalTint; }
+QWidget#MirrorBanner { background: @accentTint; border: 1px solid @accentBtn; border-radius: 12px; }
+QLabel#MirrorBannerTitle { font-size: 13.5pt; font-weight: 700; background: transparent; }
+QWidget#MirrorBanner QLabel { background: transparent; }
+QPlainTextEdit#MirrorFiles { background: @layer; border: 1px solid @divider; border-radius: 6px; }
+QPushButton#ScheduleChip { border-radius: 13px; padding: 3px 14px; font-size: 10.5pt; }
+QPushButton#ScheduleChip[scheduled="true"] { color: @accentText; border-color: @accentText; }
+
 /* ---------- boxed sections ---------- */
 QWidget#StatTile { background: @tile; border: none; border-radius: 10px; }
 QLabel#JobSummary { color: @text2; background: transparent; padding: 0 8px; }

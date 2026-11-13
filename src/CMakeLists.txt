@@ -28,6 +28,10 @@ set(SOURCES
   sound_player.cpp sound_player.h
   power_inhibitor.cpp power_inhibitor.h
   rclone_commands.cpp rclone_commands.h
+  mirror.cpp mirror.h
+  mirror_tools.cpp mirror_tools.h
+  mirror_dialog.cpp mirror_dialog.h
+  mirror_page.cpp mirror_page.h
   schedule.cpp schedule.h
   job_options.cpp job_options.h
   list_of_job_options.cpp list_of_job_options.h
@@ -130,5 +134,11 @@ if(RB_BUILD_TESTS)
     target_link_libraries(test_commands PRIVATE Qt::Core Qt::Test)
     set_target_properties(test_commands PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     add_test(NAME commands COMMAND test_commands)
+
+    add_executable(test_mirror ../tests/test_mirror.cpp mirror.cpp mirror.h rclone_commands.cpp rclone_commands.h command_args.h)
+    target_include_directories(test_mirror PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(test_mirror PRIVATE Qt::Core Qt::Test)
+    set_target_properties(test_mirror PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    add_test(NAME mirror COMMAND test_mirror)
   endif()
 endif()
