@@ -369,7 +369,21 @@ void MigrateLegacyPortableIni() {
 #endif
 }
 
+static QStringList gKnownRemotes;
+static bool gKnownRemotesSet = false;
+
+void SetKnownRemoteNames(const QStringList &names) {
+  gKnownRemotes.clear();
+  for (const QString &n : names) {
+    gKnownRemotes << n + ":";
+  }
+  gKnownRemotesSet = true;
+}
+
 QStringList ListRemoteNames() {
+  if (gKnownRemotesSet) {
+    return gKnownRemotes; // no rclone start, so dialogs open instantly
+  }
   QProcess p;
   UseRclonePassword(&p);
   p.setProgram(GetRclone());

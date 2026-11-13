@@ -35,4 +35,7 @@ unsigned int compareVersion(std::string, std::string);
 // Names of the remotes in the rclone configuration, each with its trailing
 // colon ("drive:"), as `rclone listremotes` prints them. Waits briefly for
 // rclone; returns an empty list if it cannot be run.
+// "name:" for every remote. Uses the list the main window keeps up to date;
+// asks rclone (and waits) only before that list exists.
 QStringList ListRemoteNames();
+void SetKnownRemoteNames(const QStringList &names); // plain names, no ':'

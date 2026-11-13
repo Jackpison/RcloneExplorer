@@ -11,6 +11,7 @@ ProgressDialog::ProgressDialog(const QString &title, const QString &operation,
 
   setWindowTitle(title);
   ui.labelOperation->setText(operation);
+  ui.labelInfo->setTextFormat(Qt::PlainText); // holds remote paths
   ui.labelInfo->setText(message);
 
   ui.output->setVisible(false);

@@ -33,6 +33,19 @@ QString cleanLocalPath(const QString &path) {
   return p.isEmpty() ? QString() : QDir::cleanPath(p);
 }
 
+bool isLocalPath(const QString &path) {
+  if (path.isEmpty() || path.startsWith(':') || path.startsWith('-')) {
+    return false; // ":..." is a Qt resource or an rclone backend, never a disk
+  }
+#ifdef Q_OS_WIN
+  // C:/folder or //server/share
+  const bool drive = path.size() >= 3 && path[0].isLetter() && path[1] == ':' && path[2] == '/';
+  return drive || (path.startsWith("//") && path.size() > 2);
+#else
+  return path.startsWith('/');
+#endif
+}
+
 QString trashRoot(const Target &t) {
   if (!t.local()) {
     return remotePath(t.remote, trashDir());
@@ -195,7 +208,7 @@ QString protectedFolder(const QString &localPath) {
 
 QString validate(const Plan &plan, const QList<Plan> &others) {
   if (plan.localSource()) {
-    if (plan.sourcePath.isEmpty() || !QDir::isAbsolutePath(plan.sourcePath)) {
+    if (!isLocalPath(plan.sourcePath)) {
       return QObject::tr("Choose the folder to mirror.");
     }
     if (plan.sourcePath.split('/').contains(trashDir(), Qt::CaseInsensitive)) {
@@ -215,7 +228,7 @@ QString validate(const Plan &plan, const QList<Plan> &others) {
       if (t.path.isEmpty()) {
         return QObject::tr("Choose the folder on this PC.");
       }
-      if (!QDir::isAbsolutePath(t.path)) {
+      if (!isLocalPath(t.path)) {
         return QObject::tr("Choose the full path of the folder on this PC, for example "
                            "C:\\Backups\\Photos.");
       }

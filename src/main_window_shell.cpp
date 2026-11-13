@@ -801,6 +801,13 @@ void MainWindow::rebuildNavRemotes() {
     it->setData(TypeRole, src->data(Qt::UserRole));
     it->setToolTip(src->text() + " · " + src->data(Qt::UserRole).toString());
   }
+  {
+    QStringList names;
+    for (QListWidgetItem *src : std::as_const(sources)) {
+      names << src->text();
+    }
+    SetKnownRemoteNames(names);
+  }
   if (mMirror) {
     QMap<QString, QString> remotes;
     QStringList order;

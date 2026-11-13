@@ -261,6 +261,7 @@ QString root = isLocal ? "/" : QString();
     const QString name = model->data(index.siblingAtColumn(0), Qt::DisplayRole).toString();
     QMessageBox confirm(QMessageBox::Warning, tr("Delete"),
                         tr("Delete \u201c%1\u201d?").arg(name), QMessageBox::NoButton, this);
+    confirm.setTextFormat(Qt::PlainText); // a remote file name is shown as is, never as HTML
     confirm.setInformativeText(
         folder ? tr("The folder and everything in it will be deleted from %1. "
                     "This cannot be undone.").arg(remote)

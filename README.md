@@ -38,15 +38,15 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 
 ## Mirror
 
-Keep a folder, or any sub-folder, identical on your other clouds, each copy in a folder you choose: for example `Google Drive:Photos/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos/Trips`.
+Keep a folder, or any sub-folder, identical on your other clouds, each copy in a folder you choose: for example `Google Drive:Photos/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos/Trips`. A folder on this PC works too, as the source (back up `D:\Photos` to your clouds) or as a copy (keep an offline copy of a cloud folder on your computer).
 
 1. Open **Mirror** in the sidebar and click **New mirror**.
-2. Pick the folder to mirror. Its size and file count show as you select it.
-3. Switch on the remotes that get a copy and choose the folder on each, typed or picked with **Remote…**. If that folder already holds files, the dialog says what will happen to the ones that are not in the source.
+2. Pick the folder to mirror, on a remote or, with **This PC**, on your computer. Its size and file count show as you select it.
+3. Switch on the remotes that get a copy and choose the folder on each, typed or picked with **Remote…**. Switch on **This PC** for a copy on your computer; your home, Desktop and Documents folders themselves are refused (a mirror removes whatever is not in the source), folders inside them are fine. If that folder already holds files, the dialog says what will happen to the ones that are not in the source.
 4. Click **Check** to list exactly what would be added, updated or removed, without changing anything, then **Apply these changes**. Or click **Sync** to go straight ahead; syncs run as normal transfers on the Transfers page.
 5. Leave the mirror on **Manual**, or click the chip on its card to run it on a schedule.
 
-Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each copy unless you choose otherwise. **Clean up trash** deletes old snapshots, and **History** lists every check and sync with the files that changed.
+Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each copy (for a copy on this PC, in a `_SyncTrash` folder next to it) unless you choose otherwise. **Clean up trash** deletes old snapshots, and **History** lists every check and sync with the files that changed.
 
 ![The Mirror page: a check found 53 changes; each copy shows its size, file count and a Matches or Differs badge](docs/mirror.png)
 

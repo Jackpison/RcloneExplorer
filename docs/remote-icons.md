@@ -4,7 +4,7 @@ Rclone Explorer shows every remote with a colour-coded tile for its storage type
 
 ## Included logos
 
-The download already contains logos for: `azureblob`, `b2`, `box`, `drime`, `drive`, `dropbox`, `fichier`, `filelu`, `filen`, `filescom`, `gcs`, `gofile`, `gphotos`, `hidrive`, `iclouddrive`, `internxt`, `jottacloud`, `koofr`, `mailru`, `mega`, `onedrive`, `opendrive`, `pcloud`, `pikpak`, `pixeldrain`, `premiumizeme`, `protondrive`, `putio`, `s3`, `seafile`, `storj`, `tardigrade`, `ulozto`, `zoho`. They are ordinary files in `icons\remotes` and can be replaced or deleted like your own.
+The download already contains logos for: `azureblob`, `b2`, `box`, `drime`, `drive`, `dropbox`, `fichier`, `filelu`, `filen`, `filescom`, `gcs`, `gofile`, `gphotos`, `hidrive`, `iclouddrive`, `internxt`, `jottacloud`, `koofr`, `local` (a folder on this PC), `mailru`, `mega`, `onedrive`, `opendrive`, `pcloud`, `pikpak`, `pixeldrain`, `premiumizeme`, `protondrive`, `putio`, `s3`, `seafile`, `storj`, `tardigrade`, `ulozto`, `zoho`. They are ordinary files in `icons\remotes` and can be replaced or deleted like your own.
 
 ## How to add your own icon
 

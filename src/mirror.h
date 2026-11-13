@@ -76,6 +76,9 @@ QStringList cleanExcludes(const QStringList &in, QString *error);
 // For a folder on this PC: the protected folder it is (home, Desktop,
 // Documents, a system folder, or one that holds the home folder), or "" when it
 // may be a destination. Folders inside a protected folder are fine.
+// A full path on a disk of this PC (C:/..., //server/share, or /...).
+bool isLocalPath(const QString &path);
+
 QString protectedFolder(const QString &localPath);
 
 // Checks `plan` (already cleaned) against the other plans. Destinations that

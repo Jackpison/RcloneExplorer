@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Source of folder-*.png (rendered at each size). Own drawing. -->
+  <path fill="#FFAF29" d="M186 80H472a40 40 0 0 1 40 40V220H186Z"/>
+  <path fill="#FCD053" d="M40 56H154a40 40 0 0 1 31.8 15.8L232 128a24 24 0 0 0 19 9H512V415a40 40 0 0 1-40 40H40A40 40 0 0 1 0 415V96A40 40 0 0 1 40 56Z"/>
+</svg>

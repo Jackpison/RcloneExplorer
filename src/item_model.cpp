@@ -1,4 +1,5 @@
 #include "item_model.h"
+#include "natural_sort.h"
 #include "file_names.h"
 #include "theme.h"
 #include "rclone_output.h"
@@ -81,6 +82,17 @@ public:
     mCompare.setNumericMode(true);
   }
 
+  // Locale-aware where the platform can order numbers ("2" before "10"),
+  // otherwise (some Linux setups) our own natural order.
+  int compareNames(const QString &a, const QString &b) const {
+    static const bool numeric = [] {
+      QCollator c;
+      c.setNumericMode(true);
+      return c.compare(QStringLiteral("file2"), QStringLiteral("file10")) < 0;
+    }();
+    return numeric ? mCompare.compare(a, b) : naturalCompare(a, b);
+  }
+
   bool operator()(const Item *a, const Item *b) const {
     switch (mColumn) {
     case 0:
@@ -88,8 +100,8 @@ public:
         return a->isFolder;
       }
       return mOrder == Qt::AscendingOrder
-                 ? mCompare.compare(a->name, b->name) < 0
-                 : mCompare.compare(b->name, a->name) < 0;
+                 ? compareNames(a->name, b->name) < 0
+                 : compareNames(b->name, a->name) < 0;
 
     case 1:
       if (a->isFolder != b->isFolder) {
@@ -97,8 +109,8 @@ public:
       }
       if (a->size == b->size) {
         return mOrder == Qt::AscendingOrder
-                   ? mCompare.compare(a->name, b->name) < 0
-                   : mCompare.compare(b->name, a->name) < 0;
+                   ? compareNames(a->name, b->name) < 0
+                   : compareNames(b->name, a->name) < 0;
       }
       return mOrder == Qt::AscendingOrder ? a->size < b->size
                                           : b->size < a->size;
@@ -109,8 +121,8 @@ public:
       }
       if (a->modified == b->modified) {
         return mOrder == Qt::AscendingOrder
-                   ? mCompare.compare(a->name, b->name) < 0
-                   : mCompare.compare(b->name, a->name) < 0;
+                   ? compareNames(a->name, b->name) < 0
+                   : compareNames(b->name, a->name) < 0;
       }
       return mOrder == Qt::AscendingOrder ? a->modified < b->modified
                                           : b->modified < a->modified;
@@ -124,11 +136,11 @@ public:
       const QString ka = mColumn == 3 ? typeName(a) : mColumn == 4 ? extensionOf(a) : (a->parent ? a->parent->path.path() : QString());
       const QString kb = mColumn == 3 ? typeName(b) : mColumn == 4 ? extensionOf(b) : (b->parent ? b->parent->path.path() : QString());
       if (ka == kb) {
-        return mOrder == Qt::AscendingOrder ? mCompare.compare(a->name, b->name) < 0
-                                            : mCompare.compare(b->name, a->name) < 0;
+        return mOrder == Qt::AscendingOrder ? compareNames(a->name, b->name) < 0
+                                            : compareNames(b->name, a->name) < 0;
       }
-      return mOrder == Qt::AscendingOrder ? mCompare.compare(ka, kb) < 0
-                                          : mCompare.compare(kb, ka) < 0;
+      return mOrder == Qt::AscendingOrder ? compareNames(ka, kb) < 0
+                                          : compareNames(kb, ka) < 0;
     }
     }
     return false;
@@ -143,7 +155,10 @@ private:
 ItemModel::ItemModel(const QString &remote, QObject *parent)
     : QAbstractItemModel(parent), mRemote(remote) {
   for (int px : {16, 20, 24, 32, 40, 48, 64, 96, 128, 256}) {
-    mDriveIcon.addFile(QString(":/drive/drive-%1.png").arg(px), QSize(px, px));
+    const QString file = QString(":/drive/drive-%1.png").arg(px);
+    mDriveIcon.addFile(file, QSize(px, px));
+    // as drawn when the row is selected too, not tinted with the selection colour
+    mDriveIcon.addFile(file, QSize(px, px), QIcon::Selected);
   }
   mFolderIcon = Theme::fileIcon(QString(), true);
 

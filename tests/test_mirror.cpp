@@ -186,6 +186,18 @@ private slots:
     // a remote name that rclone would read as an option is refused
     QVERIFY(!validate(plan("--config", "A", {{"p", "B"}}), {}).isEmpty());
     QVERIFY(!validate(plan("g", "A", {{"-x", "B"}}), {}).isEmpty());
+    // ":" paths are Qt resources or rclone backends, not folders on this PC
+    QVERIFY(!isLocalPath(":s3,provider=AWS:bucket"));
+    QVERIFY(!validate(plan("g", "A", {{QString(), ":local:/tmp/x"}}), {}).isEmpty());
+    QVERIFY(!validate(plan(QString(), ":memory:x", {{"p", "B"}}), {}).isEmpty());
+    QVERIFY(!isLocalPath("-x"));
+    QVERIFY(!isLocalPath("relative/path"));
+#ifdef Q_OS_WIN
+    QVERIFY(isLocalPath("C:/Backups"));
+    QVERIFY(isLocalPath("//nas/share/Backups"));
+#else
+    QVERIFY(isLocalPath("/srv/Backups"));
+#endif
     // and so is a hand-edited relative path for this PC
     const QList<Plan> edited = fromJson(QJsonDocument::fromJson(
         R"([{"sourceRemote":"g","sourcePath":"A","targets":[{"remote":"","path":"--delete-before"}]}])").array());

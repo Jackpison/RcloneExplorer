@@ -149,6 +149,10 @@ MirrorPage::MirrorPage(AddTransfer addTransfer, std::function<void()> showTransf
     QSet<QString> seen;
     for (const auto &p : std::as_const(mPlans)) {
       for (const auto &t : p.targets) {
+        if (t.local() ? !Mirror::isLocalPath(t.path) || QDir(t.path).isRoot()
+                      : !mRemotes.contains(t.remote)) {
+          continue; // a hand-edited or removed destination: nothing to look into
+        }
         const QString root = Mirror::trashRoot(t);
         if (seen.contains(root)) {
           continue;
@@ -227,7 +231,8 @@ MirrorPage::Size MirrorPage::wantSize(const QString &remote, const QString &path
   if (it != mSizes.end()) {
     return it.value();
   }
-  if (!remote.isEmpty() && !mRemotes.contains(remote)) {
+  // a missing remote, or a hand-edited path that is not a folder on this PC
+  if (remote.isEmpty() ? !Mirror::isLocalPath(path) : !mRemotes.contains(remote)) {
     Size s;
     s.state = Size::Failed;
     return s;

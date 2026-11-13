@@ -1144,7 +1144,8 @@ bool confirm(QWidget *parent, const QString &title, const QString &question,
   box.setTextFormat(Qt::RichText);
   box.setText(QString("<b>%1</b>").arg(question.toHtmlEscaped()));
   if (!detail.isEmpty()) {
-    box.setInformativeText(detail);
+    // plain text from the callers, often with folder names: never read as HTML
+    box.setInformativeText(detail.toHtmlEscaped());
   }
   QPushButton *accept = box.addButton(acceptText, QMessageBox::AcceptRole);
   QPushButton *reject = box.addButton(rejectText, QMessageBox::RejectRole);

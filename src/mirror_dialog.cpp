@@ -322,7 +322,7 @@ void MirrorDialog::loadFolder(QTreeWidgetItem *item) {
 void MirrorDialog::folderSelected() {
   if (sourceRemote().isEmpty()) { // a folder on this PC
     const QString p = Mirror::cleanLocalPath(mLocalPath->text());
-    const bool valid = QDir::isAbsolutePath(p) && !QDir(p).isRoot();
+    const bool valid = Mirror::isLocalPath(p) && !QDir(p).isRoot();
     mSourcePath = valid ? p : QString();
     if (mNext) {
       mNext->setEnabled(valid || mPages->currentIndex() == 1);
@@ -675,7 +675,7 @@ void MirrorDialog::checkDest(int i) {
   const QString path = cleanFor(d.remote, d.path->text(), &ok);
   const int gen = ++mSerial;
   d.generation = gen;
-  if (!ok || path.isEmpty() || (d.remote.isEmpty() && !QDir::isAbsolutePath(path))) {
+  if (!ok || path.isEmpty() || (d.remote.isEmpty() && !Mirror::isLocalPath(path))) {
     d.state = Dest::Unknown;
     showDestInfo(i);
     return;

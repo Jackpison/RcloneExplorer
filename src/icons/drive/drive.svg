@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Source of drive-*.png and icons/remotes/local.png. Own drawing. -->
+  <path fill="#F0F0F0" stroke="#3E4448" stroke-width="30" stroke-linejoin="round"
+        d="M150 80H362a44 44 0 0 1 39 24L476 282H36L111 104a44 44 0 0 1 39-24Z"/>
+  <rect x="17" y="282" width="478" height="152" rx="42" fill="#F4F4F4"/>
+  <path fill="#D6D6D6" d="M17 372H495V392a42 42 0 0 1-42 42H59a42 42 0 0 1-42-42Z"/>
+  <path fill="#E6E6E6" d="M440 282h13a42 42 0 0 1 42 42v48H440Z" opacity=".7"/>
+  <rect x="17" y="282" width="478" height="152" rx="42" fill="none" stroke="#3E4448" stroke-width="30"/>
+  <circle cx="426" cy="358" r="22" fill="#3E4448"/>
+</svg>

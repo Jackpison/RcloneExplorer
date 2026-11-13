@@ -1,6 +1,29 @@
 # Changelog
 
-## [5.4.0] - Unreleased
+## [5.4.1] - 2026-11-13
+
+### Added
+-   **Mirror a folder on this PC, or mirror to one.** Choose **This PC** as the source (type the folder or click **Browse…**) to keep copies of a local folder on your clouds, or switch on **This PC** as a destination to keep an offline copy of a cloud folder on your computer. A local copy is checked and synced like any other, and its trash goes to a `_SyncTrash` folder next to it
+-   **New folder and drive icons**: a flat yellow folder in the file list, and a hard-drive icon for a remote's top folder and for **This PC** (also used for `local` remotes)
+
+### Fixed
+-   Logos that are almost black (such as Filen's) were invisible in dark mode. They now sit on a light rounded plate
+-   **Show files** under a checked copy was only about four lines tall; it now grows with the list, up to ten lines
+-   Folders with numbered files were sorted `file_1, file_10, file_100, file_2` on systems whose language settings cannot sort numbers; they are now always in natural order (`file_1, file_2 … file_10`)
+-   The Mirror page flickered and could jump back to the top while sizes were being counted; it now updates in place and keeps its scroll position. It also no longer rebuilds while another page is shown
+-   The folder picker and the Tools dialog froze for a moment when opened, while rclone was asked for the list of remotes; they now use the list the window already has
+-   A long folder path made the New mirror dialog wider than the screen
+
+### Security
+-   A mirror never empties an important folder on this PC: your home folder, Desktop, Documents, Downloads, Pictures, Music and Videos, the folder that holds them (such as `C:\Users`), whole drives and system folders cannot be a destination; folders inside them can. The dialog says so as soon as such a folder is chosen
+-   Folders reached through a link or junction are compared by where they really are, so a mirror cannot write into its own source, or into another mirror's copy, through a link
+-   Every mirror is checked again just before it runs, so a hand-edited `mirrors.json` cannot start a sync that the dialog would refuse; a remote name or path that rclone would read as an option is refused
+-   File and folder names from a remote are always shown as plain text in confirmations and in Mirror, so a file named like HTML cannot change what a Delete or Move dialog says
+
+### Tests
+-   `test_mirror`: folders on this PC as source and destination (paths, command lines, validation, saving), protected folders, links, option-like names, and the end-to-end rclone run with a local source and a local destination. All tests also pass under AddressSanitizer and UndefinedBehaviorSanitizer
+
+## [5.4.0] - 2026-11-13
 
 ### Added
 -   **Mirror**, a new page in the sidebar: keep a folder, or any sub-folder, of one remote identical on other remotes. Each copy goes to the folder you choose on its remote (for example `Google Drive:Gallery/Trips/Paris` → `pCloud:Backups/Paris` and `Koofr:Photos/Paris`)
