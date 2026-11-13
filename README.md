@@ -36,6 +36,22 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 
 ![Details view in light mode](docs/details-light.png)
 
+## Mirror
+
+Keep a folder, or any sub-folder, identical on your other clouds, each copy in a folder you choose: for example `Google Drive:Photos/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos/Trips`.
+
+1. Open **Mirror** in the sidebar and click **New mirror**.
+2. Pick the folder to mirror. Its size and file count show as you select it.
+3. Switch on the remotes that get a copy and choose the folder on each, typed or picked with **Remote…**. If that folder already holds files, the dialog says what will happen to the ones that are not in the source.
+4. Click **Check** to list exactly what would be added, updated or removed, without changing anything, then **Apply these changes**. Or click **Sync** to go straight ahead; syncs run as normal transfers on the Transfers page.
+5. Leave the mirror on **Manual**, or click the chip on its card to run it on a schedule.
+
+Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each copy unless you choose otherwise. **Clean up trash** deletes old snapshots, and **History** lists every check and sync with the files that changed.
+
+![The Mirror page: a check found 53 changes; each copy shows its size, file count and a Matches or Differs badge](docs/mirror.png)
+
+![New mirror: choosing the folder on pCloud and Koofr](docs/mirror-destinations.png)
+
 ## Getting started
 
 ### Windows 10 / 11

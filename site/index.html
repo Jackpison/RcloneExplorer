@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rclone Explorer – the rclone GUI for Windows and Linux | Free, portable cloud file manager</title>
-<meta name="description" content="Rclone Explorer (formerly Rclone Browser) is a free, open-source rclone GUI for Windows and Linux: browse, upload, download and sync files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ cloud services. Portable, no install.">
-<meta name="keywords" content="rclone gui, rclone explorer, rclone browser, rclone gui windows, rclone gui linux, rclone frontend, rclone graphical interface, cloud file manager, google drive, onedrive, dropbox, pcloud, s3">
+<meta name="description" content="Rclone Explorer (formerly Rclone Browser) is a free, open-source rclone GUI for Windows and Linux: browse, upload, download, sync and mirror files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ cloud services. Portable, no install.">
+<meta name="keywords" content="rclone gui, rclone explorer, rclone browser, rclone gui windows, rclone gui linux, rclone frontend, rclone graphical interface, cloud file manager, mirror folders between clouds, cloud to cloud sync, cloud backup, google drive, onedrive, dropbox, pcloud, s3">
 <link rel="canonical" href="https://jackpison.github.io/RcloneExplorer/">
 <meta property="og:title" content="Rclone Explorer – rclone GUI for Windows and Linux">
-<meta property="og:description" content="A modern rclone GUI for Windows and Linux: browse, transfer and sync files on all your cloud storage. Portable, free and open source.">
+<meta property="og:description" content="A modern rclone GUI for Windows and Linux: browse, transfer, sync and mirror files on all your cloud storage. Portable, free and open source.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jackpison.github.io/RcloneExplorer/">
 <meta name="twitter:card" content="summary_large_image">
@@ -135,7 +135,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
   "@type": "SoftwareApplication",
   "name": "Rclone Explorer",
   "alternateName": ["Rclone Browser", "rclone GUI", "Rclone Explorer for Windows", "Rclone Explorer for Linux"],
-  "description": "Free, open-source rclone GUI for Windows and Linux: browse, upload, download and sync files on 70+ cloud storage services.",
+  "description": "Free, open-source rclone GUI for Windows and Linux: browse, upload, download, sync and mirror files on 70+ cloud storage services.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Windows 10, Windows 11, Linux",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -153,6 +153,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
     <a class="brand" href="#"><img src="img/logo.png" alt="">Rclone Explorer</a>
     <nav class="nav-links">
       <a href="#features">Features</a>
+      <a href="#mirror">Mirror</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#start">Get started</a>
       <a href="#docs">Docs</a>
@@ -171,7 +172,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
     <div class="wrap">
       <span class="pill">rclone GUI for Windows &amp; Linux</span>
       <h1>All your clouds.<br><span>One fast explorer.</span></h1>
-      <p class="lead">Rclone Explorer is a modern rclone GUI: browse, upload, download and sync files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ other services, powered by <a href="https://rclone.org/">rclone</a>. Portable, free and open source.</p>
+      <p class="lead">Rclone Explorer is a modern rclone GUI: browse, upload, download, sync and mirror files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ other services, powered by <a href="https://rclone.org/">rclone</a>. Portable, free and open source.</p>
       <div class="cta">
         <a class="btn primary" id="dl-win" href="https://github.com/Jackpison/RcloneExplorer/releases/latest">
           <svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
@@ -262,6 +263,44 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
         <h3>Private and secure</h3>
         <p>Your cloud credentials never leave rclone's own configuration. Hardened builds, self-tested packages and checksums for every release.</p>
       </article>
+      <article class="card">
+        <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
+<path d="M10 3C13.866 3 17 6.13401 17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3ZM18 10C18 5.58172 14.4183 2 10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10ZM10.0001 7.5C11.0245 7.5 11.9062 8.11648 12.2922 9H11.4999C11.2237 9 10.9999 9.22386 10.9999 9.5C10.9999 9.77614 11.2237 10 11.4999 10H13.4999C13.776 10 13.9999 9.77614 13.9999 9.5V7.5C13.9999 7.22386 13.776 7 13.4999 7C13.2237 7 12.9999 7.22386 12.9999 7.5V8.19617C12.3877 7.18015 11.2737 6.5 10.0001 6.5C8.96342 6.5 8.03154 6.9513 7.39138 7.66654C7.20721 7.87231 7.22473 8.1884 7.43049 8.37257C7.63625 8.55673 7.95235 8.53922 8.13651 8.33346C8.59499 7.8212 9.25968 7.5 10.0001 7.5ZM7.00012 11.8037V12.5C7.00012 12.7761 6.77626 13 6.50012 13C6.22398 13 6.00012 12.7761 6.00012 12.5V10.5C6.00012 10.2239 6.22398 10 6.50012 10H8.50012C8.77626 10 9.00012 10.2239 9.00012 10.5C9.00012 10.7761 8.77626 11 8.50012 11H7.70793C8.09394 11.8835 8.97557 12.5 10.0001 12.5C10.7404 12.5 11.4051 12.1788 11.8636 11.6665C12.0478 11.4608 12.3639 11.4433 12.5696 11.6274C12.7754 11.8116 12.7929 12.1277 12.6087 12.3335C11.9686 13.0487 11.0367 13.5 10.0001 13.5C8.7263 13.5 7.61231 12.8198 7.00012 11.8037Z" fill="currentColor"/>
+</svg></div>
+        <h3>Mirror across clouds</h3>
+        <p>Keep a folder, or any sub-folder, identical on your other clouds, each copy in a folder you choose. Run it when you like or on a schedule.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
+<path d="M14 3C14.2761 3 14.5 3.22386 14.5 3.5C14.5 3.77614 14.2761 4 14 4H13.0044V8.68387C13.0044 9.26343 13.1484 9.83392 13.4233 10.3441L15.8189 14.7901C16.3574 15.7894 15.6338 17.0016 14.4985 17.0016H5.50156C4.3659 17.0016 3.6434 15.7891 4.18161 14.7901L6.57568 10.3466C6.85055 9.83647 6.99444 9.26603 6.99444 8.68653V4H6C5.72386 4 5.5 3.77614 5.5 3.5C5.5 3.22386 5.72386 3 6 3H14ZM7.99444 4V8.68653C7.99444 9.43161 7.80943 10.165 7.45603 10.821L6.82078 12H13.1796L12.5429 10.8185C12.1895 10.1625 12.0044 9.42902 12.0044 8.68387V4H7.99444ZM13.7184 13H6.282L5.06196 15.2644C4.88225 15.598 5.12365 16.0016 5.50156 16.0016H14.4985C14.8769 16.0016 15.1181 15.5976 14.9386 15.2644L13.7184 13Z" fill="currentColor"/>
+</svg></div>
+        <h3>Check before you sync</h3>
+        <p>See exactly what a sync would add, update or remove, then apply it with one click. Sizes, file counts and a Matches badge for every copy.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
+<path d="M8.5 4H11.5C11.5 3.17157 10.8284 2.5 10 2.5C9.17157 2.5 8.5 3.17157 8.5 4ZM7.5 4C7.5 2.61929 8.61929 1.5 10 1.5C11.3807 1.5 12.5 2.61929 12.5 4H17.5C17.7761 4 18 4.22386 18 4.5C18 4.77614 17.7761 5 17.5 5H16.4456L15.2521 15.3439C15.0774 16.8576 13.7957 18 12.2719 18H7.72813C6.20431 18 4.92256 16.8576 4.7479 15.3439L3.55437 5H2.5C2.22386 5 2 4.77614 2 4.5C2 4.22386 2.22386 4 2.5 4H7.5ZM5.74131 15.2292C5.85775 16.2384 6.71225 17 7.72813 17H12.2719C13.2878 17 14.1422 16.2384 14.2587 15.2292L15.439 5H4.56101L5.74131 15.2292ZM8.5 7.5C8.77614 7.5 9 7.72386 9 8V14C9 14.2761 8.77614 14.5 8.5 14.5C8.22386 14.5 8 14.2761 8 14V8C8 7.72386 8.22386 7.5 8.5 7.5ZM12 8C12 7.72386 11.7761 7.5 11.5 7.5C11.2239 7.5 11 7.72386 11 8V14C11 14.2761 11.2239 14.5 11.5 14.5C11.7761 14.5 12 14.2761 12 14V8Z" fill="currentColor"/>
+</svg></div>
+        <h3>Nothing lost by accident</h3>
+        <p>Files a mirror removes or replaces are kept in a trash folder on the copy, with a one-click clean-up and a history of every run.</p>
+      </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="mirror">
+    <div class="wrap">
+      <div class="section-title"><span class="pill">New in 5.4</span><h2>Mirror your folders across clouds</h2>
+        <p>Upload to one cloud and keep identical copies on the others, each in the folder you choose. For example, Photos › Trips on Google Drive, copied to Backups on pCloud and to Photos on Koofr.</p></div>
+      <div class="shot-hero" style="margin-top:0">
+        <img class="only-dark" src="img/mirror.png" alt="The Mirror page in dark mode: a check found 53 changes; each copy shows its size, file count and a Matches or Differs badge" width="1240" height="780" loading="lazy">
+        <img class="only-light" src="img/mirror-light.png" alt="The Mirror page in light mode: three mirrors from Google Drive to pCloud, Koofr, OneDrive, Filen and Dropbox" width="1240" height="780" loading="lazy">
+      </div>
+      <div class="steps" style="margin-top:36px">
+        <div class="step"><h3>Pick a folder</h3><p>Any folder or sub-folder of any remote, or a whole remote. Its size and file count show as you choose.</p></div>
+        <div class="step"><h3>Choose the copies</h3><p>Switch on the clouds that get a copy and the folder on each. Skip files by pattern, such as <code>*.tmp</code>.</p></div>
+        <div class="step"><h3>Check, then sync</h3><p><b>Check</b> lists every file that would change, without changing anything. <b>Apply</b> or <b>Sync</b> runs it as a normal transfer.</p></div>
+        <div class="step"><h3>Manual or scheduled</h3><p>Run a mirror only when you click, or every few minutes or hours, daily, or on chosen weekdays.</p></div>
       </div>
     </div>
   </section>
@@ -275,6 +314,8 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
         <figure><img src="img/transfers-dark.png" alt="A running transfer with progress" loading="lazy"><figcaption>Transfers with live progress, pause and resume</figcaption></figure>
         <figure><img src="img/details-light.png" alt="Details view in light mode" loading="lazy"><figcaption>Details view in light mode</figcaption></figure>
         <figure><img src="img/browser.png" alt="Icons view with tabs" loading="lazy"><figcaption>Icons view with tabs</figcaption></figure>
+        <figure><img src="img/mirror-pick.png" alt="New mirror: picking a sub-folder of Google Drive, with its size and file count" loading="lazy"><figcaption>New mirror: pick any folder or sub-folder</figcaption></figure>
+        <figure><img src="img/mirror-destinations.png" alt="New mirror: choosing the folder on pCloud and Koofr" loading="lazy"><figcaption>Choose the folder on each cloud</figcaption></figure>
       </div>
     </div>
   </section>
