@@ -1,5 +1,34 @@
 # Changelog
 
+## [5.4.3] - 2026-11-14
+
+### Added
+-   **Installer: for you, or for everyone.** The setup now asks whether to install for your user only (the default: no administrator rights, in `%LOCALAPPDATA%\Programs`, updated silently) or for all users (in `C:\Program Files\Rclone Explorer`, with an administrator prompt). Updates keep the earlier choice
+-   **Saved tasks** explains how to save one when there are none yet, instead of showing greyed-out buttons
+-   **Preferences** has *Check for Rclone Explorer updates daily* next to the rclone one, in step with the Help menu
+-   **Flatpak**: sounds play (audio access), and the computer stays awake during transfers through the desktop portal
+
+### Changed
+-   The portable download is now called `RcloneExplorer-<version>-windows-x64-portable.zip`, next to the `-setup.exe`. It is also published under its old name for a while, so 5.4.2 can still update itself
+-   **winget** installs the setup instead of the zip, so `winget upgrade` and the app's own updates agree
+-   A copy installed with **Scoop** no longer updates itself (that would bypass Scoop); it shows the `scoop update rclone-explorer` command instead, ready to copy
+-   The window opens at 1320 × 738 the first time (it reopens at its last size after that)
+-   Message boxes keep their first line short and put names and paths underneath, where long ones wrap or are shortened in the middle instead of being cut off at the edge (Delete, Remove mirror, and error messages)
+
+### Fixed
+-   **Scoop updates lost your mirrors**: `mirrors.json` and `mirror_history.json` are now kept like the settings and tasks. Mirrors of an earlier version are carried over on the next update
+-   Unmounting froze the window for up to 13 seconds while a program still used the drive; it now happens in the background
+-   Checking a newly downloaded rclone froze the window while a virus scanner held it
+-   **Copy command** on a transfer card put paths with spaces in it without quotes, so the command did not work when pasted into a terminal
+-   On Windows, unmounting passed the mount's remote-control password on the command line, where other programs could read it; it now goes through the environment
+-   A mirror list was saved by replacing the file; it is now written in place with a complete copy kept beside it until done, so a crash or full disk cannot lose your mirrors
+-   Dead code from Rclone Browser removed (an unused update setting, commented-out debug lines, unused functions)
+
+### Tests
+-   Updater: relative folders, Scoop folders (also in a custom location), the new zip name with the old one as fallback
+-   `Copy command` quoting for both kinds of shells
+-   CI: warnings are errors on Linux, the unit tests also run under AddressSanitizer and UndefinedBehaviorSanitizer, and Scoop's install script is run on a fake Scoop folder
+
 ## [5.4.2] - 2026-11-14
 
 ### Added

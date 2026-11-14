@@ -1154,6 +1154,17 @@ bool confirm(QWidget *parent, const QString &title, const QString &question,
   return box.clickedButton() == accept;
 }
 
+void warn(QWidget *parent, const QString &title, const QString &text, const QString &detail) {
+  QMessageBox box(parent);
+  box.setObjectName("ConfirmBox");
+  box.setWindowTitle(title);
+  box.setIcon(QMessageBox::Warning);
+  box.setTextFormat(Qt::RichText);
+  box.setText(QString("<b>%1</b>").arg(text.toHtmlEscaped()));
+  box.setInformativeText(detail.toHtmlEscaped().replace('\n', "<br>"));
+  box.exec();
+}
+
 void setStatus(QWidget *w, const char *status) {
   w->setProperty("status", status);
   w->style()->unpolish(w);

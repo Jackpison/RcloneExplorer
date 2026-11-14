@@ -13,8 +13,8 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
     }
 
     if (!QFileInfo(rclone).isExecutable()) {
-      QMessageBox::critical(this, "Error",
-                            tr("%1 is not a program that can run.").arg(ForMessage(QDir::toNativeSeparators(rclone))));
+      Theme::warn(this, tr("Preferences"), tr("This rclone cannot be run."),
+                  ForMessage(QDir::toNativeSeparators(rclone)));
       return;
     }
 

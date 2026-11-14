@@ -263,13 +263,18 @@ QString root = isLocal ? "/" : QString();
 
     const bool folder = model->isFolder(index);
     const QString name = model->data(index.siblingAtColumn(0), Qt::DisplayRole).toString();
+    // A short question; the name goes in the details below it, which wrap.
+    // The name is escaped: a remote file name is never read as HTML.
     QMessageBox confirm(QMessageBox::Warning, tr("Delete"),
-                        tr("Delete \u201c%1\u201d?").arg(ForMessage(name)), QMessageBox::NoButton, this);
-    confirm.setTextFormat(Qt::PlainText); // a remote file name is shown as is, never as HTML
-    confirm.setInformativeText(
+                        folder ? tr("Delete this folder?") : tr("Delete this file?"),
+                        QMessageBox::NoButton, this);
+    confirm.setObjectName("ConfirmBox");
+    const QString why =
         folder ? tr("The folder and everything in it will be deleted from %1. "
                     "This cannot be undone.").arg(remote)
-               : tr("The file will be deleted from %1. This cannot be undone.").arg(remote));
+               : tr("The file will be deleted from %1. This cannot be undone.").arg(remote);
+    confirm.setInformativeText("<b>" + ForMessage(name).toHtmlEscaped() + "</b><br><br>" +
+                               why.toHtmlEscaped());
     QPushButton *del = confirm.addButton(tr("Delete"), QMessageBox::DestructiveRole);
     del->setProperty("destructive", true);
     del->style()->unpolish(del); // re-apply the style sheet with the new property
@@ -505,9 +510,8 @@ QString root = isLocal ? "/" : QString();
 
       QFile *file = new QFile(dst);
       if (!file->open(QFile::WriteOnly)) {
-        QMessageBox::warning(
-            this, "Error",
-            tr("Cannot open file \u201c%1\u201d for writing.").arg(ForMessage(QDir::toNativeSeparators(dst))));
+        Theme::warn(this, tr("Export"), tr("The file cannot be written."),
+                    ForMessage(QDir::toNativeSeparators(dst)));
         delete file;
         return;
       }
@@ -573,7 +577,7 @@ QString root = isLocal ? "/" : QString();
              ? settings->setValue("Settings/driveShared", Qt::Checked)
              : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-        qApp->setActiveWindow(this);
+        activateWindow(); // the window the files were dropped on comes to the front
         QDir destPath = model->path(target);
         QString dest = QFileInfo(path.path()).isDir()
                            ? destPath.filePath(path.dirName())

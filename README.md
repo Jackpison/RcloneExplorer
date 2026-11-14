@@ -62,7 +62,7 @@ Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each co
 
 Two downloads on the [latest release](../../releases/latest), the same app:
 
-- **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Installs for your user only (no administrator rights needed) with a Start menu entry and an uninstaller. Settings live in your user profile.
+- **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Choose **Install for me only** (the default: no administrator rights, into `%LOCALAPPDATA%\Programs\Rclone Explorer`, updates without prompts) or **Install for all users** (into `C:\Program Files\Rclone Explorer`, with an administrator prompt, also for updates). Start menu entry and uninstaller either way; settings live in your user profile.
 - **Portable:** `RcloneExplorer-<version>-windows-x64-portable.zip` (up to 5.4.2: `RcloneExplorer-<version>-windows-x64.zip`). Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
 
 Windows may show "Windows protected your PC" because the app is not code-signed: click **More info**, then **Run anyway**.
@@ -98,7 +98,7 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 
 ## Where things are stored
 
-**Windows (installed with the setup):** the program in `%LOCALAPPDATA%\Programs\Rclone Explorer`, settings in the registry and `%LOCALAPPDATA%\rclone-browser\rclone-browser` (saved tasks, mirrors, an updated rclone), your rclone configuration in `%APPDATA%\rclone\rclone.conf`.
+**Windows (installed with the setup):** the program in `%LOCALAPPDATA%\Programs\Rclone Explorer` (for you only) or `C:\Program Files\Rclone Explorer` (for all users), settings in the registry and `%LOCALAPPDATA%\rclone-browser\rclone-browser` (saved tasks, mirrors, an updated rclone), your rclone configuration in `%APPDATA%\rclone\rclone.conf`.
 
 **Windows (portable):** `Rclone Explorer.ini` next to the exe switches portable mode on, and everything stays in the app folder:
 

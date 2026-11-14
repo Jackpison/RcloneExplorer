@@ -167,8 +167,9 @@ void MainWindow::buildShell() {
   setWindowTitle(tr("Rclone Explorer"));
   setMinimumSize(960, 600);
   if (!GetSettings()->contains("MainWindow/geometry")) {
-    // roomy first-start size, but never larger than the screen
-    QSize size(1360, 860);
+    // first-start size (the inside of the window, without its title bar),
+    // never larger than the screen; later starts reopen at the last size
+    QSize size(1320, 738);
     if (const QScreen *sc = screen()) {
       size = size.boundedTo(sc->availableGeometry().size() * 0.9);
     }

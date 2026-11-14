@@ -1126,10 +1126,9 @@ void MainWindow::addStream(const QString &remote, const QString &stream) {
       this, [=, this](int status, QProcess::ExitStatus) {
         player->deleteLater();
         if (status != 0 && player->error() == QProcess::FailedToStart) {
-          QMessageBox::critical(
-              this, "Error",
-              tr("The player \u201c%1\u201d could not be started. Choose another one in "
-                 "Preferences.").arg(ForMessage(stream)));
+          Theme::warn(this, tr("Stream"), tr("The player could not be started."),
+                      ForMessage(stream) + "\n\n" +
+                          tr("Choose another one in Preferences."));
           auto settings = GetSettings();
           settings->remove("Settings/streamConfirmed");
         }

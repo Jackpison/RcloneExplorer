@@ -215,9 +215,17 @@ jobs:
 
       - name: Configure, build and test
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          # warnings are errors here, so no new one slips in
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRB_WERROR=ON
           cmake --build build
           ctest --test-dir build --output-on-failure
+          # the unit tests again under AddressSanitizer and UndefinedBehaviorSanitizer:
+          # memory errors and undefined behaviour fail the build
+          cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-asan --target test_mirror test_app_update test_commands test_rclone_output test_natural_sort test_legacy_ini
+          QT_QPA_PLATFORM=offscreen ctest --test-dir build-asan --output-on-failure
 
       - name: Build AppImage
         env:
