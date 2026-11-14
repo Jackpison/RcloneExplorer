@@ -15,7 +15,8 @@ Agreed on 2026-11-14. Items are described in the sections below.
 5. Tidy the shadowed-name compiler warnings
 6. Faster light/dark switch, if a clear improvement is possible
 7. Windows installer (`.exe` setup) next to the portable zip
-8. Flatpak ready for Flathub (manifest, store listing, CI build); submitting is a separate step, see below. Waiting for a yes
+8. Flatpak ready for Flathub (manifest, store listing, CI build); submitting is a separate step, see below
+9. Animated light/dark switch: the new theme spreads in a circle from the sun/moon button over about 0.4 s, the icon turns as it swaps. Inspired by Magic UI's [Animated Theme Toggler](https://magicui.design/docs/components/animated-theme-toggler) (a web component using the View Transitions API); written natively in Qt: snapshot the window, switch the theme underneath, then reveal it through a growing circle. The snapshot also hides the restyling pause, so it goes together with item 6. Respects the system's "reduce animations" setting
 
 ## Windows
 
