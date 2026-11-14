@@ -1,16 +1,16 @@
 {
-    "version": "5.4.2",
+    "version": "5.4.3",
     "description": "Portable rclone GUI: browse, transfer and sync files on Google Drive, OneDrive, Dropbox, S3 and 70+ other cloud services.",
     "homepage": "https://jackpison.github.io/RcloneExplorer/",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v5.4.2/RcloneExplorer-5.4.2-windows-x64.zip",
-            "hash": "0bd210ef9f3e77748cf0d7aa8d02868429408eb013dc27e3339f3d3c48b92a00"
+            "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v5.4.3/RcloneExplorer-5.4.3-windows-x64-portable.zip",
+            "hash": "00f677fc70fbf24e25b64b70affc47b7d1cc410f14c6ebb4ccd38724235c0699"
         }
     },
     "extract_dir": "Rclone Explorer",
-    "pre_install": "if (!(Test-Path \"$persist_dir\\tasks.bin\")) { New-Item \"$dir\\tasks.bin\" -ItemType File | Out-Null }",
+    "pre_install": "$names = 'tasks.bin', 'mirrors.json', 'mirror_history.json'; foreach ($n in $names) { if (!(Test-Path \"$persist_dir\\$n\")) { $old = Get-ChildItem (Split-Path $dir) -Directory | Where-Object { $_.FullName -ne $dir -and $_.Name -ne 'current' -and (Test-Path (Join-Path $_.FullName $n)) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($old) { Copy-Item (Join-Path $old.FullName $n) \"$dir\\$n\" } else { New-Item \"$dir\\$n\" -ItemType File | Out-Null } } }",
     "shortcuts": [
         [
             "Rclone Explorer.exe",
@@ -19,14 +19,16 @@
     ],
     "persist": [
         "Rclone Explorer.ini",
+        "rclone",
         "tasks.bin",
-        "rclone"
+        "mirrors.json",
+        "mirror_history.json"
     ],
     "checkver": "github",
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v$version/RcloneExplorer-$version-windows-x64.zip"
+                "url": "https://github.com/Jackpison/RcloneExplorer/releases/download/v$version/RcloneExplorer-$version-windows-x64-portable.zip"
             }
         },
         "hash": {
