@@ -20,7 +20,9 @@ public:
   }
 
 public slots:
-  void cancel();
+  // `wait`: block until the mount has ended (when quitting, so nothing is
+  // left mounted); otherwise the card closes by itself once it has.
+  void cancel(bool wait = false);
 
 signals:
   void finished();
@@ -30,6 +32,7 @@ private:
   Ui::MountWidget ui;
 
   bool mRunning = true;
+  bool mClosing = false; // unmount requested: close the card once it has ended
   QProcess *mProcess;
   int mRcPort = 0;
   QString mRcUser;

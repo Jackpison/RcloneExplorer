@@ -821,7 +821,6 @@ void toggle() {
   save(gDark ? Light : Dark);
   apply();
 }
-bool usingFusionDark() { return gDark; }
 QColor accent() { return gAccentText; }
 
 QIcon icon(const QString &name, const QColor &color) {
@@ -1145,7 +1144,7 @@ bool confirm(QWidget *parent, const QString &title, const QString &question,
   box.setText(QString("<b>%1</b>").arg(question.toHtmlEscaped()));
   if (!detail.isEmpty()) {
     // plain text from the callers, often with folder names: never read as HTML
-    box.setInformativeText(detail.toHtmlEscaped());
+    box.setInformativeText(detail.toHtmlEscaped().replace('\n', "<br>"));
   }
   QPushButton *accept = box.addButton(acceptText, QMessageBox::AcceptRole);
   QPushButton *reject = box.addButton(rejectText, QMessageBox::RejectRole);

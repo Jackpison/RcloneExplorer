@@ -391,7 +391,8 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
       if (!rel) return;
       var assets = rel.assets || [];
       var setup = assets.find(function (a) { return /windows.*-setup\.exe$/i.test(a.name); });
-      var win = assets.find(function (a) { return /windows.*\.zip$/i.test(a.name); });
+      var win = assets.find(function (a) { return /windows.*-portable\.zip$/i.test(a.name); }) ||
+                assets.find(function (a) { return /windows.*\.zip$/i.test(a.name); });
       var lin = assets.find(function (a) { return /\.AppImage$/i.test(a.name); });
       function mb(a) { return (a.size / 1048576).toFixed(0) + " MB"; }
       if (setup || win) document.getElementById("dl-win").href = (setup || win).browser_download_url;

@@ -41,7 +41,9 @@ private slots:
     QVERIFY(parseRelease(releaseJson("v5.4.2", kZipUrl), &r));
     QCOMPARE(r.version, QString("5.4.2"));
     QCOMPARE(r.assets.size(), 1);
-    QVERIFY(r.asset(zipName("5.4.2")));
+    QVERIFY(r.asset(legacyZipName("5.4.2"))); // 5.4.2 published the zip under this name
+    QVERIFY(!r.asset(zipName("5.4.2")));
+    QCOMPARE(zipName("5.4.3"), QString("RcloneExplorer-5.4.3-windows-x64-portable.zip"));
     QCOMPARE(r.page.host(), QString("github.com"));
   }
 
@@ -73,10 +75,29 @@ private slots:
     const QByteArray sums =
         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  RcloneExplorer-5.4.2-x86_64.AppImage\n"
         "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789 *RcloneExplorer-5.4.2-windows-x64.zip\r\n";
-    QCOMPARE(checksumFor(sums, zipName("5.4.2")),
+    QCOMPARE(checksumFor(sums, legacyZipName("5.4.2")),
              QString("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"));
     QVERIFY(checksumFor(sums, setupName("5.4.2")).isEmpty());
-    QVERIFY(checksumFor("short  RcloneExplorer-5.4.2-windows-x64.zip", zipName("5.4.2")).isEmpty());
+    QVERIFY(checksumFor("short  RcloneExplorer-5.4.2-windows-x64.zip", legacyZipName("5.4.2")).isEmpty());
+  }
+
+  void scoopFoldersAreRecognised() {
+    QVERIFY(isScoopFolder("C:\\Users\\me\\scoop\\apps\\rclone-explorer\\current"));
+    QVERIFY(isScoopFolder("C:/ProgramData/scoop/apps/rclone-explorer/5.4.2"));
+    QVERIFY(!isScoopFolder("C:/Tools/Rclone Explorer"));
+    QVERIFY(!isScoopFolder("C:/Users/me/AppData/Local/Programs/Rclone Explorer"));
+    // Scoop installed somewhere else (SCOOP=D:\\tools): found by its own files
+    QTemporaryDir custom;
+    QVERIFY(!isScoopFolder(custom.path()));
+    write(custom.filePath("install.json"), "{}");
+    QVERIFY(!isScoopFolder(custom.path())); // one of the two is not enough
+    write(custom.filePath("manifest.json"), "{}");
+    QVERIFY(isScoopFolder(custom.path()));
+#ifdef Q_OS_WIN
+    QCOMPARE(kind(true, "C:/Users/me/scoop/apps/rclone-explorer/current"), Kind::Scoop);
+    QCOMPARE(kind(true, "D:/Rclone Explorer"), Kind::PortableZip);
+    QCOMPARE(kind(false, "C:/Users/me/AppData/Local/Programs/Rclone Explorer"), Kind::Installer);
+#endif
   }
 
   void userFilesAreKept() {
@@ -127,6 +148,26 @@ private slots:
     QVERIFY(!QFileInfo::exists(app + "/Qt6Core.dll.old"));
     QVERIFY(!QFileInfo::exists(leftoversFile(app)));
     QCOMPARE(read(app + "/Rclone Explorer.exe"), QByteArray("new exe"));
+  }
+
+  void relativeFoldersWork() {
+    // the folders may be given relative to the working folder
+    QTemporaryDir root;
+    write(root.filePath("app/Rclone Explorer.exe"), "old exe");
+    write(root.filePath("app/tasks.bin"), "my tasks");
+    write(root.filePath("new/Rclone Explorer.exe"), "new exe");
+    write(root.filePath("new/qt/plugins/p.dll"), "plugin");
+    const QString cwd = QDir::currentPath();
+    QVERIFY(QDir::setCurrent(root.path()));
+    QString error;
+    const bool ok = apply("new", "./app", &error);
+    removeLeftovers("app");
+    QDir::setCurrent(cwd);
+    QVERIFY2(ok, qPrintable(error));
+    QCOMPARE(read(root.filePath("app/Rclone Explorer.exe")), QByteArray("new exe"));
+    QCOMPARE(read(root.filePath("app/qt/plugins/p.dll")), QByteArray("plugin"));
+    QCOMPARE(read(root.filePath("app/tasks.bin")), QByteArray("my tasks"));
+    QVERIFY(!QFileInfo::exists(root.filePath("app/Rclone Explorer.exe.old")));
   }
 
   void failedUpdateIsRolledBack() {

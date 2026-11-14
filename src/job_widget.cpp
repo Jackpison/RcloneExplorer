@@ -108,7 +108,7 @@ JobWidget::JobWidget(QProcess *process, const QString &info,
 
   QObject::connect(ui.copy, &QToolButton::clicked, this, [=, this]() {
     QClipboard *clipboard = QGuiApplication::clipboard();
-    clipboard->setText(mArgs.join(" "));
+    clipboard->setText(shellCommand(mArgs)); // pastes into a terminal as is
   });
 
   QObject::connect(mProcess, &QProcess::readyRead, this, [=, this]() {

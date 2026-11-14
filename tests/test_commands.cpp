@@ -10,6 +10,20 @@ class TestCommands : public QObject {
   Q_OBJECT
 
 private slots:
+  void shellQuoting() {
+    QCOMPARE(shellQuote("--fast-list"), QString("--fast-list"));
+    QCOMPARE(shellCommand({"rclone", "copy", "gdrive:Photos"}), QString("rclone copy gdrive:Photos"));
+#ifdef Q_OS_WIN
+    QCOMPARE(shellQuote("C:\\My Files"), QString("\"C:\\My Files\""));
+    QCOMPARE(shellQuote("a\"b c"), QString("\"a\\\"b c\""));
+#else
+    QCOMPARE(shellQuote("/home/me/My Files"), QString("'/home/me/My Files'"));
+    QCOMPARE(shellQuote("it's"), QString("'it'\\''s'"));
+    QCOMPARE(shellQuote("$HOME"), QString("'$HOME'"));
+    QCOMPARE(shellQuote(""), QString("''"));
+#endif
+  }
+
   void splitKeepsQuotedSpaces() {
     QCOMPARE(splitArguments("--a 1 --name \"my drive\""),
              QStringList({"--a", "1", "--name", "my drive"}));

@@ -63,6 +63,7 @@ private:
                         const QByteArray &sums);
   void extract(const QString &version, const QString &zipPath, int attempt);
   void finishInstall(const QString &version, const QString &extractDir);
+  void replaceExe(const QString &version, const QString &newExe);
   void fail(const QString &error);
 
   QNetworkAccessManager *mNet;

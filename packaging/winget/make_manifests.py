@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Writes the three winget manifests for one release into <out-dir>.
 
-    python3 packaging/winget/make_manifests.py <version> <sha256-of-windows-zip> <out-dir>
+    python3 packaging/winget/make_manifests.py <version> <sha256-of-windows-setup> <out-dir>
+
+winget installs the Windows setup (Inno Setup, per user, no administrator
+rights): it shows up in Apps & features, so `winget upgrade` and the app's own
+updater agree on the installed version.
 
 The result is the folder layout microsoft/winget-pkgs expects:
 <out-dir>/manifests/j/Jackpison/RcloneExplorer/<version>/*.yaml
@@ -34,15 +38,22 @@ ManifestVersion: {SCHEMA}
     f"{PKG}.installer.yaml": HEAD.format(kind="installer", v=SCHEMA) + f"""
 PackageIdentifier: {PKG}
 PackageVersion: {ver}
-InstallerType: zip
-NestedInstallerType: portable
-NestedInstallerFiles:
-- RelativeFilePath: Rclone Explorer\\Rclone Explorer.exe
-  PortableCommandAlias: rclone-explorer
+InstallerType: inno
+Scope: user
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+ProductCode: '{{36FF6A8B-39E2-49C1-8A42-DE716F7CB67D}}_is1'
+AppsAndFeaturesEntries:
+- DisplayName: Rclone Explorer
+  Publisher: Jackpison
+  ProductCode: '{{36FF6A8B-39E2-49C1-8A42-DE716F7CB67D}}_is1'
 ReleaseDate: {datetime.date.today().isoformat()}
 Installers:
 - Architecture: x64
-  InstallerUrl: {REPO}/releases/download/v{ver}/RcloneExplorer-{ver}-windows-x64.zip
+  InstallerUrl: {REPO}/releases/download/v{ver}/RcloneExplorer-{ver}-windows-x64-setup.exe
   InstallerSha256: {sha}
 ManifestType: installer
 ManifestVersion: {SCHEMA}
@@ -57,7 +68,7 @@ PackageName: Rclone Explorer
 PackageUrl: https://jackpison.github.io/RcloneExplorer/
 License: MIT
 LicenseUrl: {REPO}/blob/main/LICENSE
-ShortDescription: Portable rclone GUI for browsing, transferring and syncing cloud storage.
+ShortDescription: rclone GUI for browsing, transferring and syncing cloud storage.
 Description: |-
   Rclone Explorer (formerly Rclone Browser) is a modern GUI for rclone. Browse, upload, download and sync
   files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ other services, with tabs, icon and details

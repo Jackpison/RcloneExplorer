@@ -298,7 +298,7 @@
            <number>12</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="checkRcloneBrowserUpdates">
+           <widget class="QCheckBox" name="checkAppUpdates">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;check daily for Rclone Explorer availability&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
@@ -755,7 +755,7 @@
   <tabstop>defaultDownloadOptions</tabstop>
   <tabstop>defaultUploadOptions</tabstop>
   <tabstop>defaultRcloneOptions</tabstop>
-  <tabstop>checkRcloneBrowserUpdates</tabstop>
+  <tabstop>checkAppUpdates</tabstop>
   <tabstop>checkRcloneUpdates</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>alwaysShowInTray</tabstop>

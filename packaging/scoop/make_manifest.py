@@ -19,7 +19,23 @@ if not re.fullmatch(r"\d+\.\d+\.\d+", ver) or not re.fullmatch(r"[0-9a-f]{64}", 
     sys.exit("usage: make_manifest.py <x.y.z> <sha256>")
 
 repo = "https://github.com/Jackpison/RcloneExplorer"
-zip_url = repo + "/releases/download/v{0}/RcloneExplorer-{0}-windows-x64.zip"
+zip_url = repo + "/releases/download/v{0}/RcloneExplorer-{0}-windows-x64-portable.zip"
+
+# Files of the user's that Scoop keeps across updates. A persisted file that
+# does not exist yet would become a folder, so each is created first: copied
+# from the previous version's folder when it is there (mirrors.json was not
+# persisted before 5.4.3), else empty.
+kept_files = ["tasks.bin", "mirrors.json", "mirror_history.json"]
+pre_install = (
+    "$names = " + ", ".join("'%s'" % n for n in kept_files) + "; "
+    "foreach ($n in $names) { "
+    "if (!(Test-Path \"$persist_dir\\$n\")) { "
+    "$old = Get-ChildItem (Split-Path $dir) -Directory | "
+    "Where-Object { $_.FullName -ne $dir -and $_.Name -ne 'current' -and (Test-Path (Join-Path $_.FullName $n)) } | "
+    "Sort-Object LastWriteTime -Descending | Select-Object -First 1; "
+    "if ($old) { Copy-Item (Join-Path $old.FullName $n) \"$dir\\$n\" } "
+    "else { New-Item \"$dir\\$n\" -ItemType File | Out-Null } } }"
+)
 
 manifest = {
     "version": ver,
@@ -30,11 +46,11 @@ manifest = {
     "architecture": {"64bit": {"url": zip_url.format(ver), "hash": sha}},
     "extract_dir": "Rclone Explorer",
     # Scoop would create a folder for a persisted file that does not exist yet.
-    "pre_install": 'if (!(Test-Path "$persist_dir\\tasks.bin")) { New-Item "$dir\\tasks.bin" -ItemType File | Out-Null }',
+    "pre_install": pre_install,
     "shortcuts": [["Rclone Explorer.exe", "Rclone Explorer"]],
     # Settings, saved tasks and the bundled rclone (which the app keeps up to
     # date itself, and where a portable rclone.conf can live) survive updates.
-    "persist": ["Rclone Explorer.ini", "tasks.bin", "rclone"],
+    "persist": ["Rclone Explorer.ini", "rclone"] + kept_files,
     "checkver": "github",
     "autoupdate": {
         "architecture": {"64bit": {"url": zip_url.replace("{0}", "$version")}},

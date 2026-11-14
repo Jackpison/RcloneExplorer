@@ -22,6 +22,8 @@ finish-args:
   - --filesystem=xdg-config/rclone:create
   # the tray icon
   - --talk-name=org.kde.StatusNotifierWatcher
+  # the chime when a transfer finishes (played with paplay or pw-play)
+  - --socket=pulseaudio
 modules:
   - name: rclone
     buildsystem: simple

@@ -73,13 +73,13 @@ private:
   void checkAppUpdate(bool interactive);
   void offerAppUpdate(bool interactive);
   void installAppUpdate();
+  QAction *mAppAutoCheckAction = nullptr;
   int mJobCount = 0;
 
   bool canClose();
   void closeEvent(QCloseEvent *ev) override;
   bool getConfigPassword(QProcess *p);
 
-  void addEmptyJobsMessage();
 
   JobWidget *runItem(JobOptionsListWidgetItem *item, bool dryrun = false);
   void editSelectedTask();
@@ -113,6 +113,7 @@ private:
   void updateNewTabButton();
   void updateThemeButton();
   QComboBox *mTasksSort = nullptr;
+  QLabel *mNoTasks = nullptr; // shown instead of the list while there are no tasks
   QLabel *mHomeSubtitle = nullptr;
   QLabel *mHomeEmpty = nullptr;
   bool mSyncingNav = false;

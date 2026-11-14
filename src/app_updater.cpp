@@ -22,7 +22,9 @@ AppUpdater::AppUpdater(QObject *parent)
   }
 }
 
-AppUpdate::Kind AppUpdater::kind() { return AppUpdate::kind(IsPortableMode()); }
+AppUpdate::Kind AppUpdater::kind() {
+  return AppUpdate::kind(IsPortableMode(), QCoreApplication::applicationDirPath());
+}
 
 bool AppUpdater::checksWanted() { return kind() != AppUpdate::Kind::Flatpak; }
 
@@ -79,10 +81,13 @@ void AppUpdater::install(const AppUpdate::Release &release) {
   if (mBusy || !canInstall()) {
     return;
   }
-  const QString name = kind() == AppUpdate::Kind::PortableZip
-                           ? AppUpdate::zipName(release.version)
+  const bool zip = kind() == AppUpdate::Kind::PortableZip;
+  const QString name = zip ? AppUpdate::zipName(release.version)
                            : AppUpdate::setupName(release.version);
   const AppUpdate::Asset *file = release.asset(name);
+  if (!file && zip) { // releases up to 5.4.2 named the zip without "portable"
+    file = release.asset(AppUpdate::legacyZipName(release.version));
+  }
   const AppUpdate::Asset *sums = release.asset(QStringLiteral("SHA256SUMS.txt"));
   if (!file || !sums) {
     emit failed(tr("Rclone Explorer %1 has no %2 to download.").arg(release.version, name));

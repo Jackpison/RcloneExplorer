@@ -25,7 +25,19 @@ const Asset *Release::asset(const QString &name) const {
   return nullptr;
 }
 
-Kind kind(bool portableMode) {
+bool isScoopFolder(const QString &appDir) {
+  // Scoop writes these two files into every version folder of an app, also
+  // when Scoop lives somewhere other than ...\scoop
+  const QDir dir(appDir);
+  if (!appDir.isEmpty() && dir.exists("install.json") && dir.exists("manifest.json")) {
+    return true;
+  }
+  QString path = appDir;
+  path.replace('\\', '/'); // either kind of separator, on any system
+  return path.contains("/scoop/apps/", Qt::CaseInsensitive);
+}
+
+Kind kind(bool portableMode, const QString &appDir) {
   if (!qEnvironmentVariableIsEmpty("FLATPAK_ID")) {
     return Kind::Flatpak;
   }
@@ -34,9 +46,13 @@ Kind kind(bool portableMode) {
   }
 #ifdef Q_OS_WIN
   // the portable zip ships "Rclone Explorer.ini" next to the exe
+  if (isScoopFolder(appDir)) {
+    return Kind::Scoop; // Scoop owns the folder and keeps its own record of the version
+  }
   return portableMode ? Kind::PortableZip : Kind::Installer;
 #else
   Q_UNUSED(portableMode);
+  Q_UNUSED(appDir);
   return Kind::Other;
 #endif
 }
@@ -86,6 +102,10 @@ int compareVersions(const QString &a, const QString &b) {
 }
 
 QString zipName(const QString &version) {
+  return QString("RcloneExplorer-%1-windows-x64-portable.zip").arg(version);
+}
+
+QString legacyZipName(const QString &version) {
   return QString("RcloneExplorer-%1-windows-x64.zip").arg(version);
 }
 
@@ -148,7 +168,11 @@ void removeLeftovers(const QString &appDir) {
   }
 }
 
-bool apply(const QString &newRoot, const QString &appDir, QString *error) {
+bool apply(const QString &newRootIn, const QString &appDirIn, QString *error) {
+  // full paths: relative ones would make the file list below relative to the
+  // working folder instead of to the update
+  const QString newRoot = QFileInfo(newRootIn).absoluteFilePath();
+  const QString appDir = QFileInfo(appDirIn).absoluteFilePath();
   const QDir from(newRoot), to(appDir);
   struct Step {
     QString rel;

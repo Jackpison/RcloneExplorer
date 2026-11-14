@@ -70,6 +70,9 @@ MountWidget::MountWidget(QProcess *process, const QString &remote,
                      }
                      ui.cancel->setToolTip("Close");
                      emit finished();
+                     if (mClosing) {
+                       emit closed(); // unmounted on request: the card goes away
+                     }
                    });
 
   Theme::setStatus(ui.showDetails, "running");
@@ -78,7 +81,7 @@ MountWidget::MountWidget(QProcess *process, const QString &remote,
 
 MountWidget::~MountWidget() {}
 
-void MountWidget::cancel() {
+void MountWidget::cancel(bool wait) {
   if (!mRunning) {
     return;
   }
@@ -93,13 +96,20 @@ void MountWidget::cancel() {
   QStringList args;
   args << "rc";
   args << "--url" << QString("http://127.0.0.1:%1/").arg(mRcPort);
-  if (!mRcUser.isEmpty()) {
-    args << "--user" << mRcUser << "--pass" << mRcPass;
-  }
   // requires rclone version at least 1.50
   args << "core/quit";
 
   UseRclonePassword(p);
+  if (!mRcUser.isEmpty()) {
+    // in the environment, not on the command line, where other programs on
+    // this PC could read the password (RCLONE_USER/PASS mean --user/--pass)
+    QProcessEnvironment env = p->processEnvironment().isEmpty()
+                                  ? QProcessEnvironment::systemEnvironment()
+                                  : p->processEnvironment();
+    env.insert("RCLONE_USER", mRcUser);
+    env.insert("RCLONE_PASS", mRcPass);
+    p->setProcessEnvironment(env);
+  }
   QObject::connect(p,
                    static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(
                        &QProcess::finished),
@@ -116,14 +126,29 @@ void MountWidget::cancel() {
 #endif
 #endif
 
-  // Do not freeze the window if the unmount is held up (a program still
-  // uses the mount): ask rclone to stop, which unmounts as well.
-  if (!mProcess->waitForFinished(8000)) {
-    mProcess->terminate();
-    if (!mProcess->waitForFinished(5000)) {
-      mProcess->kill();
+  // The card closes when the mount has ended. If the unmount is held up (a
+  // program still uses the drive), rclone is asked to stop after 8 s and
+  // stopped after 5 s more, without the window ever waiting for it.
+  if (wait) {
+    if (!mProcess->waitForFinished(8000)) {
+      mProcess->terminate();
+      if (!mProcess->waitForFinished(5000)) {
+        mProcess->kill();
+      }
     }
+    emit closed();
+    return;
   }
-
-  emit closed();
+  mClosing = true;
+  QPointer<QProcess> proc = mProcess;
+  QTimer::singleShot(8000, this, [proc]() {
+    if (proc && proc->state() != QProcess::NotRunning) {
+      proc->terminate();
+    }
+  });
+  QTimer::singleShot(13000, this, [proc]() {
+    if (proc && proc->state() != QProcess::NotRunning) {
+      proc->kill();
+    }
+  });
 }

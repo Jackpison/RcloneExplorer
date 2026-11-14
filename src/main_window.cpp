@@ -117,10 +117,17 @@ MainWindow::MainWindow() {
       settings->setValue("Settings/defaultRcloneOptions",
                          dialog.getDefaultRcloneOptions().trimmed());
 
-      settings->setValue("Settings/checkRcloneBrowserUpdates",
-                         dialog.getCheckRcloneBrowserUpdates());
+      settings->setValue("Settings/checkAppUpdates",
+                         dialog.getCheckAppUpdates());
       settings->setValue("Settings/checkRcloneUpdates",
                          dialog.getCheckRcloneUpdates());
+      // the same two settings are also in the Help menu
+      if (mAutoCheckAction) {
+        mAutoCheckAction->setChecked(dialog.getCheckRcloneUpdates());
+      }
+      if (mAppAutoCheckAction) {
+        mAppAutoCheckAction->setChecked(dialog.getCheckAppUpdates());
+      }
 
       settings->setValue("Settings/alwaysShowInTray",
                          dialog.getAlwaysShowInTray());
@@ -728,7 +735,7 @@ bool MainWindow::canClose() {
     for (int i = 0; i < ui.jobs->count(); i++) {
       QWidget *widget = ui.jobs->itemAt(i)->widget();
       if (auto mount = qobject_cast<MountWidget *>(widget)) {
-        mount->cancel();
+        mount->cancel(true); // quitting: unmount before the app exits
       } else if (auto transfer = qobject_cast<JobWidget *>(widget)) {
         transfer->cancel();
       } else if (auto stream = qobject_cast<StreamWidget *>(widget)) {
@@ -823,6 +830,13 @@ void MainWindow::listTasks() {
     if (!selected.isNull() && jo->uniqueId == selected) {
       ui.tasksListWidget->setCurrentItem(item);
     }
+  }
+  // nothing to act on: an explanation instead of greyed-out buttons
+  const bool none = ui.tasksListWidget->count() == 0;
+  if (mNoTasks) {
+    mNoTasks->setVisible(none);
+    ui.tasksActionBar->setVisible(!none);
+    ui.tasksArea->setVisible(!none);
   }
 }
 
@@ -931,8 +945,6 @@ void MainWindow::editSelectedTask() {
   bool isDownload = (jo->jobType == JobOptions::Download);
   QString remote = isDownload ? jo->source : jo->dest;
   QString path = isDownload ? jo->dest : jo->source;
-  // qDebug() << "remote:" + remote;
-  // qDebug() << "path:" + path;
   TransferDialog td(isDownload, false, remote, path, jo->isFolder, this, jo,
                     true);
   td.exec();
@@ -1116,7 +1128,8 @@ void MainWindow::addStream(const QString &remote, const QString &stream) {
         if (status != 0 && player->error() == QProcess::FailedToStart) {
           QMessageBox::critical(
               this, "Error",
-              QString("Failed to start '%1' player process").arg(stream));
+              tr("The player \u201c%1\u201d could not be started. Choose another one in "
+                 "Preferences.").arg(ForMessage(stream)));
           auto settings = GetSettings();
           settings->remove("Settings/streamConfirmed");
         }
@@ -1235,6 +1248,7 @@ void MainWindow::setupAppUpdater() {
   QObject::connect(checkNow, &QAction::triggered, this, [this]() { checkAppUpdate(true); });
 
   auto *autoCheck = new QAction(tr("Check for Rclone Explorer updates automatically"), this);
+  mAppAutoCheckAction = autoCheck;
   autoCheck->setCheckable(true);
   autoCheck->setChecked(GetSettings()->value("Settings/checkAppUpdates", true).toBool());
   ui.menuHelp->insertAction(ui.menuHelp->actions().value(1), autoCheck);
@@ -1332,6 +1346,9 @@ void MainWindow::offerAppUpdate(bool interactive) {
   } else if (install) {
     info = tr("Its setup is downloaded from GitHub, checked against its published "
               "checksum and run; Rclone Explorer then restarts. Your settings are kept.");
+  } else if (AppUpdater::kind() == AppUpdate::Kind::Scoop) {
+    info = tr("Rclone Explorer was installed with Scoop, so update it with Scoop, which keeps "
+              "your settings, tasks and mirrors:<br><br><code>scoop update rclone-explorer</code>");
   } else {
     info = tr("Download it from the release page.");
   }
@@ -1341,7 +1358,10 @@ void MainWindow::offerAppUpdate(bool interactive) {
                      mLatestApp.version.toHtmlEscaped());
   }
   box.setInformativeText(info);
-  auto *go = box.addButton(install ? tr("Update now") : tr("Open download page"),
+  const bool scoop = AppUpdater::kind() == AppUpdate::Kind::Scoop;
+  auto *go = box.addButton(install  ? tr("Update now")
+                           : scoop  ? tr("Copy command")
+                                    : tr("Open download page"),
                            QMessageBox::AcceptRole);
   auto *skip = box.addButton(tr("Skip this version"), QMessageBox::RejectRole);
   box.addButton(tr("Later"), QMessageBox::RejectRole);
@@ -1352,6 +1372,8 @@ void MainWindow::offerAppUpdate(bool interactive) {
   } else if (box.clickedButton() == go) {
     if (install) {
       installAppUpdate();
+    } else if (scoop) {
+      QGuiApplication::clipboard()->setText(QStringLiteral("scoop update rclone-explorer"));
     } else {
       QDesktopServices::openUrl(mLatestApp.page.isValid()
                                     ? mLatestApp.page

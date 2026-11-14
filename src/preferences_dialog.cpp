@@ -14,7 +14,7 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
 
     if (!QFileInfo(rclone).isExecutable()) {
       QMessageBox::critical(this, "Error",
-                            QString("File %1 is not executable").arg(rclone));
+                            tr("%1 is not a program that can run.").arg(ForMessage(QDir::toNativeSeparators(rclone))));
       return;
     }
 
@@ -94,15 +94,20 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
   ui.defaultRcloneOptions->setText(
       settings->value("Settings/defaultRcloneOptions").toString());
 
-  ui.checkRcloneBrowserUpdates->setChecked(
-      settings->value("Settings/checkRcloneBrowserUpdates", true).toBool());
+  ui.checkAppUpdates->setChecked(
+      settings->value("Settings/checkAppUpdates", true).toBool());
   ui.checkRcloneUpdates->setChecked(
       settings->value("Settings/checkRcloneUpdates", true).toBool());
   ui.checkRcloneUpdates->setText(
       tr("Check for rclone updates daily and offer to install them"));
-  // The upstream Rclone Browser project is no longer maintained, so there is
-  // nothing meaningful to check against.
-  ui.checkRcloneBrowserUpdates->hide();
+  ui.checkAppUpdates->setText(
+      tr("Check for Rclone Explorer updates daily and offer to install them"));
+  ui.checkAppUpdates->setToolTip(QString());
+  ui.checkRcloneUpdates->setToolTip(QString());
+  if (IsFlatpak()) { // Flathub updates both
+    ui.checkAppUpdates->hide();
+    ui.checkRcloneUpdates->hide();
+  }
   // remote icons have a fixed size in the redesigned interface
   ui.groupBox_5->hide();
 
@@ -212,8 +217,8 @@ QString PreferencesDialog::getDefaultRcloneOptions() const {
   return ui.defaultRcloneOptions->text();
 }
 
-bool PreferencesDialog::getCheckRcloneBrowserUpdates() const {
-  return ui.checkRcloneBrowserUpdates->isChecked();
+bool PreferencesDialog::getCheckAppUpdates() const {
+  return ui.checkAppUpdates->isChecked();
 }
 
 bool PreferencesDialog::getCheckRcloneUpdates() const {

@@ -321,10 +321,15 @@ void MirrorPage::editPlan(const QUuid &id) {
 
 void MirrorPage::removePlan(const QUuid &id) {
   const Mirror::Plan *p = find(id);
-  if (!p ||
-      QMessageBox::question(this, tr("Remove mirror"),
-                            tr("Remove the mirror of %1? Files already copied stay where they are.")
-                                .arg(p->title())) != QMessageBox::Yes) {
+  if (!p) {
+    return;
+  }
+  // a long path cannot wrap: shorten it in the middle, on a line of its own
+  const QString what = p->localSource() ? p->title() : Mirror::remotePath(p->sourceRemote, p->sourcePath);
+  const QString shown = fontMetrics().elidedText(what, Qt::ElideMiddle, 440);
+  if (!Theme::confirm(this, tr("Remove mirror"), tr("Remove this mirror?"),
+                      shown + "\n\n" + tr("Files already copied stay where they are."),
+                      tr("Remove"), tr("Keep"))) {
     return;
   }
   mPlans.removeIf([&](const Mirror::Plan &x) { return x.id == id; });

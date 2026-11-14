@@ -399,18 +399,34 @@ void RcloneUpdater::finishInstall(const QString &version,
 #endif
 
   // Sanity check: the new binary must run and report the expected version.
-  {
-    QProcess p;
-    p.start(newExe, {"version"});
-    p.waitForFinished(20000);
-    const QString out = QString::fromUtf8(p.readAllStandardOutput());
-    if (!out.startsWith("rclone " + version)) {
-      fail(tr("The downloaded rclone did not run correctly; nothing was "
-              "changed."));
-      return;
+  // Without blocking the window: a virus scanner may hold a freshly
+  // downloaded program for a few seconds on its first start.
+  emit status(tr("Checking the new rclone…"));
+  auto *p = new QProcess(this);
+  auto *timeout = new QTimer(p);
+  timeout->setSingleShot(true);
+  connect(timeout, &QTimer::timeout, p, [p]() { p->kill(); });
+  connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError e) {
+    if (e == QProcess::FailedToStart) {
+      p->deleteLater();
+      fail(tr("The downloaded rclone did not run correctly; nothing was changed."));
     }
-  }
+  });
+  connect(p, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+          [this, p, version, newExe](int, QProcess::ExitStatus) {
+            p->deleteLater();
+            const QString out = QString::fromUtf8(p->readAllStandardOutput());
+            if (!out.startsWith("rclone " + version)) {
+              fail(tr("The downloaded rclone did not run correctly; nothing was changed."));
+              return;
+            }
+            replaceExe(version, newExe);
+          });
+  p->start(newExe, {"version"});
+  timeout->start(60000);
+}
 
+void RcloneUpdater::replaceExe(const QString &version, const QString &newExe) {
   emit status(tr("Installing…"));
   const QString target = managedPath();
   const QString old = target + ".old";

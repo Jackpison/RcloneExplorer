@@ -21,7 +21,7 @@ public:
   QString getDefaultUploadOptions() const;
   QString getDefaultRcloneOptions() const;
 
-  bool getCheckRcloneBrowserUpdates() const;
+  bool getCheckAppUpdates() const;
   bool getCheckRcloneUpdates() const;
 
   bool getAlwaysShowInTray() const;

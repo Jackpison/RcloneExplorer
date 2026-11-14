@@ -527,6 +527,15 @@ void MainWindow::buildShell() {
     // inside the scroll area with a 32 px height cap from the .ui file,
     // which cut the buttons off at the bottom of the page.
     v->insertWidget(1, ui.tasksActionBar);
+    mNoTasks = new QLabel(tr("No saved tasks yet.\n\nIn an upload, download or transfer window, "
+                             "click Save task to keep it here. Run it again with one click, try "
+                             "it as a dry run, or schedule it."));
+    mNoTasks->setAlignment(Qt::AlignCenter);
+    mNoTasks->setWordWrap(true);
+    mNoTasks->setMinimumHeight(160);
+    mNoTasks->setProperty("secondary", true);
+    mNoTasks->hide();
+    v->insertWidget(2, mNoTasks, 1); // takes the list's room while the list is hidden
     ui.tasksActionBar->setMinimumSize(0, 0);
     ui.tasksActionBar->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     ui.tasksActionBar->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

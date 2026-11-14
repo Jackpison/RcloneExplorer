@@ -63,7 +63,7 @@ Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each co
 Two downloads on the [latest release](../../releases/latest), the same app:
 
 - **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Installs for your user only (no administrator rights needed) with a Start menu entry and an uninstaller. Settings live in your user profile.
-- **Portable:** `RcloneExplorer-<version>-windows-x64.zip`. Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
+- **Portable:** `RcloneExplorer-<version>-windows-x64-portable.zip` (up to 5.4.2: `RcloneExplorer-<version>-windows-x64.zip`). Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
 
 Windows may show "Windows protected your PC" because the app is not code-signed: click **More info**, then **Run anyway**.
 
@@ -78,7 +78,7 @@ scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer
 scoop install rclone-explorer
 ```
 
-Settings, saved tasks and the bundled rclone are kept when Scoop updates the app.
+Settings, saved tasks, mirrors and the bundled rclone are kept when Scoop updates the app (`scoop update rclone-explorer`); a copy installed with Scoop points you there instead of updating itself.
 
 ### Linux (x86_64)
 

@@ -9,6 +9,11 @@ std::unique_ptr<QSettings> GetSettings();
 // (FUSE) are not available in the sandbox.
 bool IsFlatpak();
 
+// A path or file name for a message box: a stretch too long for one line is
+// shortened in the middle instead of being cut off at the edge (message
+// boxes only wrap at spaces). Short names are returned unchanged.
+QString ForMessage(const QString &text);
+
 // Windows portable mode: releases up to 4.x were called "Rclone Browser" and
 // kept their settings in RcloneBrowser.ini next to the exe. Copy such a file
 // to the new name (RcloneExplorer.ini) so portable mode and all settings carry

@@ -103,6 +103,9 @@ endif()
 
 target_link_libraries(${TARGET_NAME} PRIVATE
   Qt::Core Qt::Gui Qt::Widgets Qt::Network Qt::Svg)
+if(NOT WIN32)
+  target_link_libraries(${TARGET_NAME} PRIVATE Qt::DBus)
+endif()
 
 if(WIN32)
   target_link_libraries(${TARGET_NAME} PRIVATE shell32 ole32 dwmapi advapi32 winmm)

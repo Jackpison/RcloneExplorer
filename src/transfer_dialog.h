@@ -36,6 +36,4 @@ private:
 
   void done(int r) override;
 
-signals:
-  void tasksListChanged();
 };

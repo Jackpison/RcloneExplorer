@@ -110,16 +110,13 @@ int main(int argc, char *argv[]) {
   QFileInfo applicationUserPath;
 
   // QString xdg_config_home = qgetenv("XDG_CONFIG_HOME");
-  // qDebug() << QString("main.cpp $XDG_CONFIG_HOME: " + xdg_config_home);
 
   // QString APPIMAGE = qgetenv("APPIMAGE");
-  // qDebug() << QString("main.cpp $APPIMAGE: " + APPIMAGE);
 
   QFileInfo appBundlePath;
 
   if (IsPortableMode()) {
 
-    //  qDebug() << QString("isPortable is true");
     //  applicationPath = qApp->applicationFilePath();
 #ifdef Q_OS_MACOS
     // on macOS excecutable file is located in
@@ -219,7 +216,6 @@ int main(int argc, char *argv[]) {
         0x80004004); // exit immediately if folder not writable
   }
 
-  // qDebug() << QString("main.cpp tmpDir:  " + tmpDir);
 
   // not most elegant as fixed name but in reality not big deal
   // The single-instance lock lives in the temp folder (not next to the exe,

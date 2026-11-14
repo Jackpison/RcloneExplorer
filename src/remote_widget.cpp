@@ -264,7 +264,7 @@ QString root = isLocal ? "/" : QString();
     const bool folder = model->isFolder(index);
     const QString name = model->data(index.siblingAtColumn(0), Qt::DisplayRole).toString();
     QMessageBox confirm(QMessageBox::Warning, tr("Delete"),
-                        tr("Delete \u201c%1\u201d?").arg(name), QMessageBox::NoButton, this);
+                        tr("Delete \u201c%1\u201d?").arg(ForMessage(name)), QMessageBox::NoButton, this);
     confirm.setTextFormat(Qt::PlainText); // a remote file name is shown as is, never as HTML
     confirm.setInformativeText(
         folder ? tr("The folder and everything in it will be deleted from %1. "
@@ -507,7 +507,7 @@ QString root = isLocal ? "/" : QString();
       if (!file->open(QFile::WriteOnly)) {
         QMessageBox::warning(
             this, "Error",
-            QString("Cannot open file '%1' for writing!").arg(dst));
+            tr("Cannot open file \u201c%1\u201d for writing.").arg(ForMessage(QDir::toNativeSeparators(dst))));
         delete file;
         return;
       }

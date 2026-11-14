@@ -39,8 +39,6 @@ void apply();
 // True when the dark variant is active right now.
 bool isDark();
 
-// Kept for older code paths (remote type icons use "_inv" in dark mode).
-bool usingFusionDark();
 
 QString displayName(Mode mode);
 

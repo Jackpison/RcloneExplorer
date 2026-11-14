@@ -115,8 +115,29 @@ jobs:
           $out = (Get-Content selftest.txt -Raw)
           Write-Host $out
           if ($p.ExitCode -ne 0) { throw "self-test failed ($($p.ExitCode)): $($out -replace '\s+',' ')" }
-          Compress-Archive "$dir" "dist\RcloneExplorer-$ver-windows-x64.zip"
+          Compress-Archive "$dir" "dist\RcloneExplorer-$ver-windows-x64-portable.zip"
+          # Also under the name used up to 5.4.2: those versions look for it when
+          # they update themselves. Drop this once few people still run them.
+          Copy-Item "dist\RcloneExplorer-$ver-windows-x64-portable.zip" "dist\RcloneExplorer-$ver-windows-x64.zip"
           "VERSION=$ver" | Out-File -Append $env:GITHUB_ENV
+
+          # Scoop's install script (pre_install of the generated manifest) on a
+          # fake Scoop layout: mirrors of the previous version are carried over
+          # into the new folder, missing files are created empty.
+          # in a scope of its own: $dir means the app folder in the rest of this step
+          & {
+            python packaging/scoop/make_manifest.py $ver 0000000000000000000000000000000000000000000000000000000000000000 | Out-Null
+            $script = (Get-Content bucket\rclone-explorer.json -Raw | ConvertFrom-Json).pre_install
+            git checkout -- bucket/rclone-explorer.json
+            $apps = "$env:RUNNER_TEMP\scoop\apps\rclone-explorer"
+            New-Item -ItemType Directory -Force "$apps\5.4.2", "$apps\$ver", "$env:RUNNER_TEMP\scoop\persist\rclone-explorer" | Out-Null
+            Set-Content "$apps\5.4.2\mirrors.json" '[{"kept":true}]'
+            $dir = "$apps\$ver"; $persist_dir = "$env:RUNNER_TEMP\scoop\persist\rclone-explorer"
+            Invoke-Expression $script
+            if ((Get-Content "$dir\mirrors.json" -Raw) -notmatch 'kept') { throw "Scoop: mirrors.json was not carried over" }
+            if (-not (Test-Path "$dir\tasks.bin" -PathType Leaf)) { throw "Scoop: tasks.bin was not created" }
+            if (-not (Test-Path "$dir\mirror_history.json" -PathType Leaf)) { throw "Scoop: mirror_history.json was not created" }
+          }
 
           # Setup (.exe) built from the same folder with Inno Setup, pinned and
           # checksum-verified like everything else.
@@ -356,7 +377,7 @@ jobs:
           notes += (
               "\n\n---\n**Downloads**\n\n"
               f"- **Windows 10/11, installer:** `RcloneExplorer-{ver}-windows-x64-setup.exe`, installs for your user (no administrator rights) with a Start menu entry; updates keep your settings.\n"
-              f"- **Windows 10/11, portable:** `RcloneExplorer-{ver}-windows-x64.zip`, extract anywhere and run `Rclone Explorer.exe`.\n"
+              f"- **Windows 10/11, portable:** `RcloneExplorer-{ver}-windows-x64-portable.zip`, extract anywhere and run `Rclone Explorer.exe`. (`RcloneExplorer-{ver}-windows-x64.zip` is the same file, for the in-app update of version 5.4.2.)\n"
               f"- **Linux (x86_64):** `RcloneExplorer-{ver}-x86_64.AppImage`, make it executable (`chmod +x`) and run it.\n\n"
               "SHA-256 checksums are in `SHA256SUMS.txt`."
           )
@@ -378,7 +399,7 @@ jobs:
       - name: winget manifests
         run: |
           set -euo pipefail
-          sha=$(grep -- '-windows-x64.zip$' dist/SHA256SUMS.txt | cut -d' ' -f1)
+          sha=$(grep -- '-windows-x64-setup.exe$' dist/SHA256SUMS.txt | cut -d' ' -f1)
           python3 packaging/winget/make_manifests.py "$VERSION" "$sha" winget
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -403,7 +424,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          sha=$(grep -- '-windows-x64.zip$' dist/SHA256SUMS.txt | cut -d' ' -f1)
+          sha=$(grep -- '-windows-x64-portable.zip$' dist/SHA256SUMS.txt | cut -d' ' -f1)
           git fetch --depth=1 origin main
           git checkout -B main FETCH_HEAD
           python3 packaging/scoop/make_manifest.py "$VERSION" "$sha"

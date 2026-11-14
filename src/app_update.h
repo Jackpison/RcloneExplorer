@@ -29,9 +29,13 @@ enum class Kind {
   Installer,   // Windows setup: the new setup runs
   AppImage,    // Linux AppImage: the download page opens
   Flatpak,     // Flathub updates it: no checks at all
+  Scoop,       // Windows zip installed by Scoop: `scoop update` updates it
   Other        // built from source: the download page opens
 };
-Kind kind(bool portableMode);
+Kind kind(bool portableMode, const QString &appDir = QString());
+// The app folder is one of Scoop's: it holds Scoop's install.json and
+// manifest.json, or lies in …\scoop\apps\<name>\<version or current>.
+bool isScoopFolder(const QString &appDir);
 
 // GitHub's "latest release" answer. Only a release of this project with a
 // plain x.y.z version and download links on github.com is accepted.
@@ -41,7 +45,8 @@ bool trustedAssetUrl(const QUrl &url, const QString &version);
 // -1, 0 or 1, comparing "5.4.10" with "5.4.9" as numbers.
 int compareVersions(const QString &a, const QString &b);
 
-QString zipName(const QString &version);   // RcloneExplorer-5.4.2-windows-x64.zip
+QString zipName(const QString &version);       // RcloneExplorer-5.4.3-windows-x64-portable.zip
+QString legacyZipName(const QString &version); // RcloneExplorer-5.4.2-windows-x64.zip (5.4.2 and older)
 QString setupName(const QString &version); // RcloneExplorer-5.4.2-windows-x64-setup.exe
 
 // The SHA-256 published for `name` in a sha256sum-style list, lower case,
