@@ -4,6 +4,19 @@ Ideas for future updates. They are collected here and shipped together in one
 release rather than one at a time. Tick an item off (or remove it) once it is
 in a release, and mention it in `CHANGELOG.md`.
 
+## Next release: 5.4.5
+
+Agreed on 2026-11-14. Items are described in the sections below.
+
+1. Update Rclone Explorer from inside the app (Windows)
+2. Mirror: warn when a destination is another mirror's source
+3. Linux: desktop portal (native dialogs, system light/dark) and the Wayland window icon
+4. New Mirror screenshots with This PC (README and website)
+5. Tidy the shadowed-name compiler warnings
+6. Faster light/dark switch, if a clear improvement is possible
+7. Windows installer (`.exe` setup) next to the portable zip
+8. Flatpak ready for Flathub (manifest, store listing, CI build); submitting is a separate step, see below. Waiting for a yes
+
 ## Windows
 
 - [ ] **Update Rclone Explorer from inside the app**, the way rclone is already updated: check GitHub for a newer release, download the Windows zip, verify it against the release's `SHA256SUMS.txt`, replace the program files and restart. Your settings (`Rclone Explorer.ini`), `tasks.bin`, `mirrors.json`, `mirror_history.json`, `rclone\` and your own logos in `icons\remotes\` are kept. Today a manual update means renaming the old folder, extracting the new zip and copying those files back. The check is a new network call, so add it to the README privacy statement first, with a setting to turn it off.
@@ -13,7 +26,10 @@ in a release, and mention it in `CHANGELOG.md`.
 ## Linux desktop
 
 - [ ] **Wayland and desktop portal.** Use the desktop portal for file dialogs and the light/dark setting (GNOME or KDE dialogs, system theme). Set the desktop file name so the window shows its proper icon and launcher under Wayland. About 20 lines in `main.cpp`. A first attempt exists on the old branch `claude/confident-sagan-ofhan9` (from the Rclone Browser days); write it fresh with Rclone Explorer names instead of reviving that branch.
-- [ ] **Flatpak.** One manifest under `packaging/flatpak/` with an `io.github.jackpison.RcloneExplorer` id, and a CI job that builds it. Decide first whether to publish on Flathub.
+- [ ] **Flatpak, published on Flathub** (a loose `.flatpak` file gets no updates, so it adds nothing over the AppImage).
+  - In this repo: manifest under `packaging/flatpak/` (KDE runtime with Qt 6, rclone bundled with its checksum), AppStream store listing with screenshots, desktop file and icon, and a CI job that builds and test-runs it. App id `io.github.jackpison.RcloneExplorer`.
+  - Sandbox: mounting needs FUSE and is hidden in the Flatpak (use the AppImage for that); home folder access for folders on this PC; the app and rclone updaters are off because Flathub delivers updates.
+  - Submitting: a pull request to `flathub/flathub` from the owner's GitHub account, then Flathub's review (days to weeks, often with requested changes). After approval Flathub creates the app's own repository, where each release is a small update.
 
 ## Mirror
 
