@@ -126,12 +126,11 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 
 ## Code signing policy
 
-Windows releases are moving to signed builds: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). Until the first signed release, `Rclone Explorer.exe` is unsigned and Windows may warn about it (see [Getting started](#getting-started)).
+Windows releases are not code-signed yet, so Windows may warn about `Rclone Explorer.exe` the first time it runs (see [Getting started](#getting-started)). To check that a download is genuine, compare its SHA-256 checksum with `SHA256SUMS.txt` on the release page (in PowerShell: `Get-FileHash <file>`).
 
-- Committers and reviewers: [Jackpison](https://github.com/Jackpison)
-- Approvers: [Jackpison](https://github.com/Jackpison)
-- Only `Rclone Explorer.exe` is signed, and only when it was built from this repository by the [Update workflow](.github/workflows/update.yml) on GitHub Actions. Every release is approved by hand before it is signed.
-- The download also contains files from other projects (the Qt libraries and rclone). They are not signed by this project.
+- Every release is built from this repository by the [Update workflow](.github/workflows/update.yml) on GitHub Actions, never on a personal computer.
+- Committers, reviewers and release approvers: [Jackpison](https://github.com/Jackpison)
+- The download also contains files from other projects (the Qt libraries and rclone), as published by those projects.
 
 ## Privacy
 

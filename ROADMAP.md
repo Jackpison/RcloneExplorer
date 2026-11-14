@@ -4,6 +4,12 @@ Ideas for future updates. They are collected here and shipped together in one
 release rather than one at a time. Tick an item off (or remove it) once it is
 in a release, and mention it in `CHANGELOG.md`.
 
+## Windows
+
+- [ ] **Update Rclone Explorer from inside the app**, the way rclone is already updated: check GitHub for a newer release, download the Windows zip, verify it against the release's `SHA256SUMS.txt`, replace the program files and restart. Your settings (`Rclone Explorer.ini`), `tasks.bin`, `mirrors.json`, `mirror_history.json`, `rclone\` and your own logos in `icons\remotes\` are kept. Today a manual update means renaming the old folder, extracting the new zip and copying those files back. The check is a new network call, so add it to the README privacy statement first, with a setting to turn it off.
+- [ ] **Installer (`.exe` setup) next to the portable zip.** Built with Inno Setup in the release workflow. Installs per user into `%LOCALAPPDATA%\Programs` (no administrator rights needed), adds a Start menu shortcut and an uninstaller, and runs in normal (not portable) mode, so settings live in `%APPDATA%` and an update never touches them. Also the better fit for winget.
+- [ ] **Code signing.** SignPath Foundation turned down the request (November 2026). Other options to compare: a Certum open-source code-signing certificate, or Microsoft Trusted Signing. Until then releases are unsigned and Windows SmartScreen shows a warning on first start.
+
 ## Linux desktop
 
 - [ ] **Wayland and desktop portal.** Use the desktop portal for file dialogs and the light/dark setting (GNOME or KDE dialogs, system theme). Set the desktop file name so the window shows its proper icon and launcher under Wayland. About 20 lines in `main.cpp`. A first attempt exists on the old branch `claude/confident-sagan-ofhan9` (from the Rclone Browser days); write it fresh with Rclone Explorer names instead of reviving that branch.
