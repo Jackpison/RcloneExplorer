@@ -16,6 +16,9 @@ which also hides the restyling pause; shadowed-name warnings tidied.
 ## Windows
 
 - [ ] **Code signing with SignPath, once the app has grown.** SignPath Foundation offers free signing for open-source projects but turned down the first request (November 2026); apply again when the project has more users. Until then releases are unsigned and users check downloads against `SHA256SUMS.txt`.
+- [ ] **"portable" in the zip's name** (next version), now that there is also a setup: `RcloneExplorer-<version>-windows-x64-portable.zip` next to `RcloneExplorer-<version>-windows-x64-setup.exe`.
+  - **Transition:** 5.4.2 and later look for exactly `RcloneExplorer-<version>-windows-x64.zip` when they update themselves. Publish the zip under both names for a few releases (same file, both in `SHA256SUMS.txt`), and have the updater look for the new name first and fall back to the old one. Drop the old name once most people run a version that knows the new one.
+  - **To change:** the zip name in the Windows job of the Update workflow, the release notes text, the two `grep -- '-windows-x64.zip$'` lookups for Scoop and winget, `packaging/scoop/make_manifest.py` and `bucket/rclone-explorer.json` (also its `autoupdate` URL), `packaging/winget/make_manifests.py`, `AppUpdate::zipName()` and `tests/test_app_update.cpp`, the README's Windows section, and the website's download script (`/windows.*\.zip$/` still matches, but should prefer the new name).
 - [ ] **winget with the installer.** The winget manifests still use the portable zip; the setup (`InstallerType: inno`, per-user scope) is the better fit now that it exists.
 
 ## Linux desktop
