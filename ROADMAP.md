@@ -8,7 +8,10 @@ in a release, and mention it in `CHANGELOG.md`.
 
 - [ ] **Update Rclone Explorer from inside the app**, the way rclone is already updated: check GitHub for a newer release, download the Windows zip, verify it against the release's `SHA256SUMS.txt`, replace the program files and restart. Your settings (`Rclone Explorer.ini`), `tasks.bin`, `mirrors.json`, `mirror_history.json`, `rclone\` and your own logos in `icons\remotes\` are kept. Today a manual update means renaming the old folder, extracting the new zip and copying those files back. The check is a new network call, so add it to the README privacy statement first, with a setting to turn it off.
 - [ ] **Installer (`.exe` setup) next to the portable zip.** Built with Inno Setup in the release workflow. Installs per user into `%LOCALAPPDATA%\Programs` (no administrator rights needed), adds a Start menu shortcut and an uninstaller, and runs in normal (not portable) mode, so settings live in `%APPDATA%` and an update never touches them. Also the better fit for winget.
-- [ ] **Code signing.** SignPath Foundation turned down the request (November 2026). Other options to compare: a Certum open-source code-signing certificate, or Microsoft Trusted Signing. Until then releases are unsigned and Windows SmartScreen shows a warning on first start.
+- [ ] **Code signing** (later, once the app has more users). SignPath Foundation turned down the request (November 2026); it can be asked again when the project is bigger. Prices seen in November 2026, check again before buying:
+  - Certum Open Source Code Signing: about €49/year in the cloud (SimplySign), €69 with smart card and reader. ID check, non-commercial open source only. Hard to automate in GitHub Actions.
+  - Microsoft Azure Artifact Signing (was Trusted Signing): about $9.99/month. Individuals only in the USA and Canada; needs a paid Azure subscription. Works well from GitHub Actions.
+  - Either way SmartScreen may still warn at first, until the signed app builds up reputation. Until then releases are unsigned; users check downloads against `SHA256SUMS.txt`.
 
 ## Linux desktop
 
