@@ -5,6 +5,10 @@
 
 std::unique_ptr<QSettings> GetSettings();
 
+// Running as a Flatpak: rclone and the app are updated by Flathub, and mounts
+// (FUSE) are not available in the sandbox.
+bool IsFlatpak();
+
 // Windows portable mode: releases up to 4.x were called "Rclone Browser" and
 // kept their settings in RcloneBrowser.ini next to the exe. Copy such a file
 // to the new name (RcloneExplorer.ini) so portable mode and all settings carry

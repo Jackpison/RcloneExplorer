@@ -22,11 +22,11 @@ QString root = isLocal ? "/" : QString();
   isLocal = false;
 #endif
 
-  auto settings = GetSettings();
-  QString rcloneVersion = settings->value("Settings/rcloneVersion").toString();
-  settings->setValue("Settings/driveShared", Qt::Unchecked);
+  auto startup = GetSettings();
+  QString rcloneVersion = startup->value("Settings/rcloneVersion").toString();
+  startup->setValue("Settings/driveShared", Qt::Unchecked);
   ui.tree->setAlternatingRowColors(
-      settings->value("Settings/rowColors", false).toBool());
+      startup->value("Settings/rowColors", false).toBool());
   ui.checkBoxShared->setChecked(false);
   ui.checkBoxShared->setDisabled(!isGoogle);
   // hide checkBoxShared for non Google remotes
@@ -40,6 +40,10 @@ QString root = isLocal ? "/" : QString();
   ui.buttonMove->setDefaultAction(ui.move);
   ui.buttonPurge->setDefaultAction(ui.purge);
   ui.buttonMount->setDefaultAction(ui.mount);
+  if (IsFlatpak()) { // FUSE mounts do not work inside the Flatpak sandbox
+    ui.mount->setVisible(false);
+    ui.buttonMount->hide();
+  }
   ui.buttonStream->setDefaultAction(ui.stream);
   ui.buttonUpload->setDefaultAction(ui.upload);
   ui.buttonDownload->setDefaultAction(ui.download);
@@ -289,11 +293,11 @@ QString root = isLocal ? "/" : QString();
 
       ProgressDialog progress("Delete", "Deleting...", pathMsg, &process, this);
       if (progress.exec() == QDialog::Accepted) {
-        QModelIndex parent = index.parent();
-        QModelIndex next = parent.model()->index(index.row() + 1, 0);
-        ui.tree->selectionModel()->select(next.isValid() ? next : parent,
+        QModelIndex above = index.parent();
+        QModelIndex next = above.model()->index(index.row() + 1, 0);
+        ui.tree->selectionModel()->select(next.isValid() ? next : above,
                                           QItemSelectionModel::SelectCurrent);
-        model->removeRow(index.row(), parent);
+        model->removeRow(index.row(), above);
       }
     }
   });
@@ -562,7 +566,7 @@ QString root = isLocal ? "/" : QString();
 
   QObject::connect(
       model, &ItemModel::drop, this,
-      [=, this](const QDir &path, const QModelIndex &parent) {
+      [=, this](const QDir &path, const QModelIndex &target) {
         auto settings = GetSettings();
         bool driveShared = ui.checkBoxShared->checkState();
         (driveShared
@@ -570,7 +574,7 @@ QString root = isLocal ? "/" : QString();
              : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
         qApp->setActiveWindow(this);
-        QDir destPath = model->path(parent);
+        QDir destPath = model->path(target);
         QString dest = QFileInfo(path.path()).isDir()
                            ? destPath.filePath(path.dirName())
                            : destPath.path();
@@ -1078,10 +1082,10 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
     if (!cur.isValid()) {
       return;
     }
-    QModelIndex parent = cur.parent();
-    if (parent.isValid()) {
-      ui.tree->setCurrentIndex(parent);
-      ui.tree->scrollTo(parent);
+    QModelIndex above = cur.parent();
+    if (above.isValid()) {
+      ui.tree->setCurrentIndex(above);
+      ui.tree->scrollTo(above);
     }
   });
 

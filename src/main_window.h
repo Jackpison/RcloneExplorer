@@ -6,6 +6,8 @@
 #include "pch.h"
 
 class RcloneUpdater;
+class AppUpdater;
+#include "app_update.h"
 #include "ui_main_window.h"
 
 class JobWidget;
@@ -60,6 +62,17 @@ private:
   void checkRcloneUpdate(bool interactive);
   void offerRcloneDownload();
   void installRclone(const QString &version);
+
+  // updates of Rclone Explorer itself
+  AppUpdater *mAppUpdater = nullptr;
+  QLabel *mAppVersion = nullptr; // status bar, left: the version, or an update link
+  AppUpdate::Release mLatestApp; // empty version: unknown
+  void setupAppUpdater();
+  void updateAppVersionLabel();
+  void maybeAutoCheckApp();
+  void checkAppUpdate(bool interactive);
+  void offerAppUpdate(bool interactive);
+  void installAppUpdate();
   int mJobCount = 0;
 
   bool canClose();

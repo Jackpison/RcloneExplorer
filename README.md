@@ -14,7 +14,7 @@
 
 Rclone Explorer gives rclone a full graphical interface, so you can manage cloud files without the command line:
 
-- **Modern design** in black and gold or warm light, with a one-click **light / dark** switch next to the app name
+- **Modern design** in black and gold or warm light, with a one-click **light / dark** switch next to the app name: the new theme spreads in a circle from the button
 - **All your clouds in one place**: Google Drive, OneDrive, Dropbox, pCloud, S3, SFTP, encrypted remotes and every other rclone storage type, using your existing rclone configuration. Logos for 34 popular services are included; you can [add your own](docs/remote-icons.md).
 - **File Explorer–style tabs**: open several remotes, or the same remote several times (Ctrl+T)
 - **Icons and Details views**: extra large to small icons (Ctrl + mouse wheel), or a sortable list with name, size, modified date, type, extension and path
@@ -22,13 +22,13 @@ Rclone Explorer gives rclone a full graphical interface, so you can manage cloud
 - **Transfers you can pause and resume**, with live progress, speed and time left
 - A **sound** when a transfer finishes or fails, and the computer is **kept awake** while transfers run (both can be turned off in Preferences)
 - Saved **tasks**: store a transfer once, run it again with one click (or as a dry run), or **schedule** it to run by itself (every N minutes or hours, daily, or on chosen weekdays)
-- **Mirror**: keep a folder, or any sub-folder, identical on other remotes, each copy in a folder you choose (`Google Drive:Gallery/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos`). See the size, file count and a Matches / Differs badge for every copy, **check** exactly what would be added, updated or removed before anything changes, then **sync** with one click or on a **schedule**. Files the source removed or replaced are kept in a `_SyncTrash` folder on the copy (or deleted, or left alone), with a **Clean up trash** tool and a **history** of every run. Skip files by pattern (`*.tmp`, `Thumbs.db`…); Google Docs are skipped unless you choose to copy them as Office files
+- **Mirror**: keep a folder, or any sub-folder, identical on other remotes, each copy in a folder you choose (`Google Drive:Gallery/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos`). See the size, file count and a Matches / Differs badge for every copy, **check** exactly what would be added, updated or removed before anything changes, then **sync** with one click or on a **schedule**. A folder on this PC works as a source or as a copy too. Files the source removed or replaced are kept in a `_SyncTrash` folder on the copy (or deleted, or left alone), with a **Clean up trash** tool and a **history** of every run. Skip files by pattern (`*.tmp`, `Thumbs.db`…); Google Docs are skipped unless you choose to copy them as Office files
 - **Tools** on every remote: compare folders, copy between remotes (with a remote folder browser), two-way sync (bisync), remove duplicates and empty the trash
 - Sidebar remotes sortable by name, type or your own order (drag and drop)
 - Saved tasks sortable by name or type
 - Breadcrumb address bar, filter the current folder (Ctrl+F)
 - Mount remotes as drives with a choice of cache mode, and stream media to a player such as [VLC](https://www.videolan.org/)
-- **Built-in rclone updater**: rclone is bundled and kept up to date, every download checksum-verified
+- **Updates itself**: Rclone Explorer and the bundled rclone are kept up to date from inside the app, every download checksum-verified; your settings, tasks and mirrors are kept
 
 ![Remotes on the Home page](docs/home.png)
 
@@ -52,13 +52,22 @@ Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each co
 
 ![New mirror: choosing the folder on pCloud and Koofr](docs/mirror-destinations.png)
 
+![Mirrors with a folder on this PC: Holidays photos backed up to pCloud and Google Drive, and an offline copy of the Taxes folder](docs/mirror-pc.png)
+
+![An offline copy on this PC next to the Dropbox copy](docs/mirror-pc-destination.png)
+
 ## Getting started
 
 ### Windows 10 / 11
 
-1. Download `RcloneExplorer-<version>-windows-x64.zip` from the [latest release](../../releases/latest).
-2. Extract it to any folder and run `Rclone Explorer.exe`.
-3. Windows may show "Windows protected your PC" because the app is not code-signed: click **More info**, then **Run anyway**.
+Two downloads on the [latest release](../../releases/latest), the same app:
+
+- **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Installs for your user only (no administrator rights needed) with a Start menu entry and an uninstaller. Settings live in your user profile.
+- **Portable:** `RcloneExplorer-<version>-windows-x64.zip`. Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
+
+Windows may show "Windows protected your PC" because the app is not code-signed: click **More info**, then **Run anyway**.
+
+**Updating:** Rclone Explorer checks for a new version once a day and offers it (or use **Help & Update → Check for Rclone Explorer updates…**). **Update now** downloads it, checks it against the published checksum, installs it and restarts; your settings, saved tasks, mirrors, rclone and remotes are kept. To update the portable version by hand instead, do not delete the old folder: extract the new zip elsewhere and copy `Rclone Explorer.ini`, `tasks.bin`, `mirrors.json`, `mirror_history.json` and the `rclone` folder into it.
 
 Mounting remotes as drive letters needs [WinFsp](https://winfsp.dev/).
 
@@ -88,6 +97,8 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 - **Linux:** nothing to do. Settings stay in `~/.config/rclone-browser/` on purpose.
 
 ## Where things are stored
+
+**Windows (installed with the setup):** the program in `%LOCALAPPDATA%\Programs\Rclone Explorer`, settings in the registry and `%LOCALAPPDATA%\rclone-browser\rclone-browser` (saved tasks, mirrors, an updated rclone), your rclone configuration in `%APPDATA%\rclone\rclone.conf`.
 
 **Windows (portable):** `Rclone Explorer.ini` next to the exe switches portable mode on, and everything stays in the app folder:
 
@@ -137,6 +148,7 @@ Windows releases are not code-signed yet, so Windows may warn about `Rclone Expl
 Rclone Explorer has no account, no telemetry and no analytics. It only connects to other systems in these cases:
 
 - **Your storage:** it runs rclone against the cloud services and servers you set up, when you browse, transfer, mount, stream, sync or mirror.
+- **Rclone Explorer updates:** at most about once a day it asks `api.github.com` for the newest Rclone Explorer release, and when you install an update it downloads it from `github.com`. Nothing about you or your files is sent. Turn the automatic check off with **Help & Update → Check for Rclone Explorer updates automatically**. (The Flatpak does not check: Flathub updates it.)
 - **rclone updates:** at most about once a day it asks `downloads.rclone.org` for the newest rclone version number, and when you install an update it downloads rclone from `downloads.rclone.org` (or `github.com/rclone/rclone` as a fallback). Nothing about you or your files is sent. Turn the automatic check off with **Help & Update → Check for rclone updates automatically**.
 - **Links:** the website, GitHub and documentation links open in your browser only when you click them.
 

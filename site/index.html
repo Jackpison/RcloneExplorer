@@ -53,6 +53,7 @@ header.nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srg
 .theme-btn { background: transparent; border: 1px solid var(--stroke); color: var(--text); border-radius: 10px;
   width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer; }
 .theme-btn:hover { background: var(--card-hover); }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
 /* hero */
 .hero { padding: 88px 0 48px; text-align: center; }
@@ -187,7 +188,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
       </div>
       <div class="meta"><a href="https://github.com/Jackpison/RcloneExplorer">View source on GitHub</a></div>
       <div class="meta">Rclone Explorer, formerly known as Rclone Browser</div>
-      <div class="meta" id="download-meta">Windows 10/11: portable zip · Linux: AppImage · no installation · 64-bit</div>
+      <div class="meta" id="download-meta">Windows 10/11: installer or portable zip · Linux: AppImage · 64-bit</div>
       <div class="shot-hero">
         <img class="only-dark" src="img/browser.png" alt="Rclone Explorer, an rclone GUI for Windows, in dark mode" width="1400" height="820">
         <img class="only-light" src="img/browser-light.png" alt="Rclone Explorer, an rclone GUI for Windows, in light mode" width="1400" height="820">
@@ -253,8 +254,8 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
         <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
 <path d="M11.4142 3.63503C11.6095 3.43977 11.6095 3.12319 11.4142 2.92792L9.29289 0.806603C9.09763 0.611341 8.78104 0.611341 8.58578 0.806603C8.39052 1.00186 8.39052 1.31845 8.58578 1.51371L9.58264 2.51056C7.80518 2.60911 6.05488 3.33754 4.69671 4.6957C1.76776 7.62463 1.76776 12.3734 4.69671 15.3023C4.95359 15.5592 5.2247 15.7937 5.50757 16.0058C5.72852 16.1714 6.04191 16.1266 6.20756 15.9057C6.3732 15.6847 6.32838 15.3713 6.10743 15.2057C5.86235 15.0219 5.6271 14.8185 5.40382 14.5952C2.8654 12.0568 2.8654 7.94121 5.40382 5.40281C6.68997 4.11666 8.38002 3.48223 10.0664 3.49934C10.0915 3.49959 10.1162 3.49799 10.1404 3.49466L8.58578 5.04924C8.39052 5.24451 8.39052 5.56109 8.58578 5.75635C8.78104 5.95161 9.09763 5.95161 9.29289 5.75635L11.4142 3.63503ZM8.58578 16.363C8.39052 16.5582 8.39052 16.8748 8.58578 17.0701L10.7071 19.1914C10.9024 19.3866 11.219 19.3866 11.4142 19.1914C11.6095 18.9961 11.6095 18.6795 11.4142 18.4843L10.4174 17.4874C12.1948 17.3889 13.9451 16.6605 15.3033 15.3023C18.2322 12.3734 18.2322 7.62462 15.3033 4.69569C15.0464 4.43881 14.7753 4.20428 14.4924 3.99221C14.2715 3.82656 13.9581 3.87139 13.7924 4.09233C13.6268 4.31327 13.6716 4.62667 13.8926 4.79231C14.1377 4.97606 14.3729 5.17952 14.5962 5.40279C17.1346 7.9412 17.1346 12.0568 14.5962 14.5952C13.31 15.8813 11.62 16.5158 9.9336 16.4987C9.90849 16.4984 9.88379 16.5 9.85963 16.5033L11.4142 14.9487C11.6095 14.7535 11.6095 14.4369 11.4142 14.2416C11.219 14.0464 10.9024 14.0464 10.7071 14.2416L8.58578 16.363Z" fill="currentColor"/>
 </svg></div>
-        <h3>rclone kept up to date</h3>
-        <p>rclone is included and updated from inside the app. Every download is checksum-verified.</p>
+        <h3>Always up to date</h3>
+        <p>Rclone Explorer and the included rclone update from inside the app. Every download is checksum-verified, and your settings, tasks and mirrors are kept.</p>
       </article>
       <article class="card">
         <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
@@ -316,6 +317,8 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
         <figure><img src="img/browser.png" alt="Icons view with tabs" loading="lazy"><figcaption>Icons view with tabs</figcaption></figure>
         <figure><img src="img/mirror-pick.png" alt="New mirror: picking a sub-folder of Google Drive, with its size and file count" loading="lazy"><figcaption>New mirror: pick any folder or sub-folder</figcaption></figure>
         <figure><img src="img/mirror-destinations.png" alt="New mirror: choosing the folder on pCloud and Koofr" loading="lazy"><figcaption>Choose the folder on each cloud</figcaption></figure>
+        <figure><img src="img/mirror-pc.png" alt="Mirrors with a folder on this PC: photos backed up to pCloud and Google Drive, and an offline copy of a Google Drive folder" loading="lazy"><figcaption>Back up a folder on this PC, or keep an offline copy</figcaption></figure>
+        <figure><img src="img/mirror-pc-destination.png" alt="New mirror: This PC switched on next to Dropbox" loading="lazy"><figcaption>This PC as a copy, next to your clouds</figcaption></figure>
       </div>
     </div>
   </section>
@@ -325,7 +328,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
       <div class="section-title"><span class="pill">Get started</span><h2>Up and running in a minute</h2></div>
       <div class="steps">
         <div class="step"><h3>Download</h3><p>Get the latest version for your system from the <a href="https://github.com/Jackpison/RcloneExplorer/releases/latest">releases page</a>.</p></div>
-        <div class="step"><h3>Windows</h3><p>Extract the zip anywhere and run <code>Rclone Explorer.exe</code>. If Windows warns about an unknown app, choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
+        <div class="step"><h3>Windows</h3><p>Run the installer (no administrator rights needed), or extract the portable zip anywhere and run <code>Rclone Explorer.exe</code>. If Windows warns about an unknown app, choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
         <div class="step"><h3>Linux</h3><p>Make the AppImage executable (<code>chmod +x</code>) and run it. Works on Ubuntu, Fedora, Debian, Mint, Arch and more.</p></div>
         <div class="step"><h3>Connect</h3><p>Your rclone remotes appear automatically, or click <b>New remote</b> to add one.</p></div>
       </div>
@@ -360,10 +363,24 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
     document.getElementById("theme-icon").innerHTML = dark ? sun : moon;
   }
   document.getElementById("theme").addEventListener("click", function () {
+    var button = this;
     var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("theme", next); } catch (e) {}
-    paintThemeIcon();
+    function apply() {
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("theme", next); } catch (e) {}
+      paintThemeIcon();
+    }
+    // as in the app: the new theme spreads in a circle from the button
+    var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!document.startViewTransition || still) { apply(); return; }
+    var r = button.getBoundingClientRect();
+    var x = r.left + r.width / 2, y = r.top + r.height / 2;
+    var end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(apply).ready.then(function () {
+      document.documentElement.animate(
+        { clipPath: ["circle(0px at " + x + "px " + y + "px)", "circle(" + end + "px at " + x + "px " + y + "px)"] },
+        { duration: 400, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" });
+    });
   });
   paintThemeIcon();
 
@@ -373,13 +390,15 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
     .then(function (rel) {
       if (!rel) return;
       var assets = rel.assets || [];
+      var setup = assets.find(function (a) { return /windows.*-setup\.exe$/i.test(a.name); });
       var win = assets.find(function (a) { return /windows.*\.zip$/i.test(a.name); });
       var lin = assets.find(function (a) { return /\.AppImage$/i.test(a.name); });
       function mb(a) { return (a.size / 1048576).toFixed(0) + " MB"; }
-      if (win) document.getElementById("dl-win").href = win.browser_download_url;
+      if (setup || win) document.getElementById("dl-win").href = (setup || win).browser_download_url;
       if (lin) document.getElementById("dl-linux").href = lin.browser_download_url;
       var parts = ["Version " + rel.tag_name.replace(/^v/, "")];
-      if (win) parts.push("Windows zip " + mb(win));
+      if (setup) parts.push("Windows installer " + mb(setup));
+      if (win) parts.push("portable zip " + mb(win));
       if (lin) parts.push("Linux AppImage " + mb(lin));
       document.getElementById("download-meta").textContent = parts.join(" · ");
     })

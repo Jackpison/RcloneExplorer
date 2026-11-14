@@ -1,5 +1,27 @@
 # Changelog
 
+## [5.4.2] - 2026-11-14
+
+### Added
+-   **Rclone Explorer updates itself.** Once a day it checks GitHub for a new version and offers it (or use **Help & Update → Check for Rclone Explorer updates…**). **Update now** downloads it, checks it against the release's published SHA-256 checksum, installs it and restarts. Your settings, saved tasks, mirrors, rclone and remotes are kept. The portable version swaps its files in place (with everything put back if anything fails); the installed version runs the new setup. On Linux the release page opens. The automatic check can be turned off in the same menu
+-   **Windows installer** next to the portable zip: `RcloneExplorer-<version>-windows-x64-setup.exe` installs for your user only (no administrator rights), with a Start menu entry, an optional desktop shortcut and an uninstaller. It runs in normal mode, so settings live in your user profile and updates never touch them
+-   **Animated light/dark switch**: the new theme spreads in a circle from the sun/moon button, and the icon turns as it changes. It also hides the short pause while the app restyles. Windows' *Animation effects* setting turns it off
+-   **Flatpak**, ready for Flathub: a manifest in `packaging/flatpak/` built on the KDE runtime with rclone bundled. In the Flatpak, mounting is not available (the sandbox has no FUSE) and Flathub delivers updates of the app and rclone
+-   **Native file dialogs and the system theme on Linux**: GNOME and KDE file dialogs through the desktop portal, and the *System* theme now follows the desktop's light or dark setting
+-   **Mirror** asks before saving a mirror that writes into the folder another mirror copies from (a chain such as Google Drive → pCloud, then pCloud → Koofr). Allowed, but every sync of the first changes what the second copies
+
+### Fixed
+-   The Windows installed version (without the portable ini) now uses the rclone that comes with it
+
+### Changed
+-   README and website: screenshots of mirrors with a folder on this PC
+-   Code clean-ups: no more variables hiding other variables of the same name
+
+### Tests
+-   `test_app_update`: reading GitHub's release information, refusing downloads from anywhere else, checksums, version order, which files an update keeps, an update applied to a real folder, and everything put back when it fails
+-   `test_mirror`: chains of mirrors
+-   The release workflow installs the Windows setup silently, runs the installed app's self-test and uninstalls it
+
 ## [5.4.1] - 2026-11-13
 
 ### Added

@@ -86,6 +86,12 @@ QString protectedFolder(const QString &localPath);
 // empty string when the plan is fine.
 QString validate(const Plan &plan, const QList<Plan> &others);
 
+// Not an error, but worth a question: a destination of `plan` is (inside) the
+// folder another mirror copies from, so syncing `plan` changes what that
+// mirror copies. Fine for a chain (Drive -> pCloud, then pCloud -> Koofr).
+// Returns "" when there is nothing to ask.
+QString feedsOtherMirror(const Plan &plan, const QList<Plan> &others);
+
 struct RunOptions {
   bool dryRun = false;
   QString stamp;      // trash snapshot name, see stampFormat()

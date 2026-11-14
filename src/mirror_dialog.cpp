@@ -270,15 +270,15 @@ void MirrorDialog::loadFolder(QTreeWidgetItem *item) {
   QProcess *p = MirrorUtil::runRclone(
       this, {"lsjson", "--dirs-only", "--no-mimetype", Mirror::remotePath(remote, path)},
       [this, where, path, remote](int code, const QByteArray &out, const QString &err) {
-        QTreeWidgetItem *item = mTree->itemFromIndex(where);
-        if (!item || remote != sourceRemote()) {
+        QTreeWidgetItem *node = mTree->itemFromIndex(where);
+        if (!node || remote != sourceRemote()) {
           return;
         }
-        qDeleteAll(item->takeChildren());
+        qDeleteAll(node->takeChildren());
         bool ok = false;
         const auto entries = RcloneOutput::parseLsJson(out, &ok);
         if (code != 0 || !ok) {
-          auto *e = new QTreeWidgetItem(item, {tr("Could not list this folder: %1")
+          auto *e = new QTreeWidgetItem(node, {tr("Could not list this folder: %1")
                                                    .arg(MirrorUtil::lastError(err))});
           e->setFlags(Qt::NoItemFlags);
           return;
@@ -295,16 +295,16 @@ void MirrorDialog::loadFolder(QTreeWidgetItem *item) {
           const QString child = joinPath(path, name);
           auto *ci = folderItem(name, child, Theme::icon("folder"));
           ci->setText(1, mSizes.value(Mirror::remotePath(remote, child)));
-          item->addChild(ci);
+          node->addChild(ci);
         }
         if (names.isEmpty()) {
-          item->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
+          node->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
         }
         // when editing, walk down to the mirrored folder
         if (mWalk && remote == mPlan.sourceRemote) {
           const QString target = mPlan.sourcePath;
-          for (int i = 0; i < item->childCount(); ++i) {
-            QTreeWidgetItem *c = item->child(i);
+          for (int i = 0; i < node->childCount(); ++i) {
+            QTreeWidgetItem *c = node->child(i);
             const QString cp = c->data(0, PathRole).toString();
             if (cp == target) {
               mWalk = false;
@@ -630,27 +630,27 @@ void MirrorDialog::fillDestinations() {
     QObject::connect(d.path, &QLineEdit::editingFinished, this, [this, i]() { checkDest(i); });
     QObject::connect(d.path, &QLineEdit::textChanged, mError, &QWidget::hide); // an old complaint
     QObject::connect(browse, &QPushButton::clicked, this, [this, i]() {
-      Dest &d = mDests[i];
-      if (d.remote.isEmpty()) { // a folder on this PC
-        const QString current = Mirror::cleanLocalPath(d.path->text());
+      Dest &dest = mDests[i];
+      if (dest.remote.isEmpty()) { // a folder on this PC
+        const QString current = Mirror::cleanLocalPath(dest.path->text());
         const QString picked = QFileDialog::getExistingDirectory(
             this, tr("Choose a folder on this PC"),
             current.isEmpty() ? QDir::homePath() : current);
         if (!picked.isEmpty()) {
-          d.path->setText(QDir::toNativeSeparators(picked));
+          dest.path->setText(QDir::toNativeSeparators(picked));
           checkDest(i);
         }
         return;
       }
-      RemoteFolderDialog pick(Mirror::remotePath(d.remote, d.path->text()), this);
+      RemoteFolderDialog pick(Mirror::remotePath(dest.remote, dest.path->text()), this);
       if (pick.exec() != QDialog::Accepted) {
         return;
       }
       const QString sel = pick.selected();
-      const QString remote = sel.section(':', 0, 0);
+      const QString pickedRemote = sel.section(':', 0, 0);
       const QString folder = sel.section(':', 1);
       for (int k = 0; k < mDests.size(); ++k) {
-        if (mDests[k].remote == remote) {
+        if (mDests[k].remote == pickedRemote) {
           mDests[k].on->setChecked(true);
           mDests[k].path->setText(folder);
           checkDest(k);
@@ -687,14 +687,14 @@ void MirrorDialog::checkDest(int i) {
                           if (i >= mDests.size() || mDests[i].generation != gen) {
                             return;
                           }
-                          Dest &d = mDests[i];
+                          Dest &dest = mDests[i];
                           if (code == 0) {
                             const QJsonObject o = QJsonDocument::fromJson(out).object();
-                            d.files = o.value("count").toInteger();
-                            d.bytes = o.value("bytes").toInteger();
-                            d.state = d.files == 0 ? Dest::Empty : Dest::Holds;
+                            dest.files = o.value("count").toInteger();
+                            dest.bytes = o.value("bytes").toInteger();
+                            dest.state = dest.files == 0 ? Dest::Empty : Dest::Holds;
                           } else {
-                            d.state = err.contains("not found", Qt::CaseInsensitive) ? Dest::Missing
+                            dest.state = err.contains("not found", Qt::CaseInsensitive) ? Dest::Missing
                                                                                        : Dest::Failed;
                           }
                           showDestInfo(i);
@@ -787,6 +787,12 @@ void MirrorDialog::save() {
   err = Mirror::validate(p, mAll);
   if (!err.isEmpty()) {
     return fail(err);
+  }
+  const QString chain = Mirror::feedsOtherMirror(p, mAll);
+  if (!chain.isEmpty() &&
+      !Theme::confirm(this, tr("Mirror"), tr("Write into another mirror's source?"), chain,
+                      tr("Save anyway"), tr("Go back"))) {
+    return;
   }
   mPlan = p;
   accept();

@@ -150,21 +150,21 @@ void RemoteFolderDialog::load(QTreeWidgetItem *item) {
       [this, p, where, path](int status, QProcess::ExitStatus) {
         mRunning.removeAll(p);
         p->deleteLater();
-        QTreeWidgetItem *item = mTree->itemFromIndex(where);
-        if (!item) {
+        QTreeWidgetItem *node = mTree->itemFromIndex(where);
+        if (!node) {
           return;
         }
         bool parsed = false;
         const auto entries =
             RcloneOutput::parseLsJson(p->readAllStandardOutput(), &parsed);
-        qDeleteAll(item->takeChildren());
+        qDeleteAll(node->takeChildren());
 
         if (status != 0 || !parsed) {
           const QString err = QString::fromUtf8(p->readAllStandardError())
                                   .trimmed()
                                   .section('\n', -1);
           mHint->setText(tr("Could not list this folder. %1").arg(err));
-          item->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
+          node->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
           return;
         }
         mHint->clear();
@@ -180,10 +180,10 @@ void RemoteFolderDialog::load(QTreeWidgetItem *item) {
                            return naturalCompare(a, b) < 0;
                          });
         for (const QString &name : names) {
-          item->addChild(makeFolderItem(name, joinPath(path, name)));
+          node->addChild(makeFolderItem(name, joinPath(path, name)));
         }
         if (names.isEmpty()) {
-          item->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
+          node->setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
         }
       });
 

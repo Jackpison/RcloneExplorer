@@ -6,6 +6,7 @@
 #include <windows.h>
 #endif
 #include "rclone_updater.h"
+#include "app_updater.h"
 #include "job_options.h"
 #include "job_widget.h"
 #include "list_of_job_options.h"
@@ -341,6 +342,7 @@ MainWindow::MainWindow() {
 
   RcloneUpdater::cleanup();
   setupRcloneUpdater();
+  setupAppUpdater();
 
   QString rclone = GetRclone();
   // A saved path that no longer exists (e.g. an old AppImage mount point)
@@ -523,6 +525,7 @@ void MainWindow::rcloneGetVersion() {
           }
           maybeAutoCheckRclone();
         }
+        maybeAutoCheckApp();
 
         p->deleteLater();
       });
@@ -1175,9 +1178,10 @@ void MainWindow::setupRcloneUpdater() {
   mRcloneStatus->setTextFormat(Qt::RichText);
   mRcloneStatus->setContentsMargins(6, 0, 6, 0);
   // App version on the left (before messages), rclone version on the right.
-  auto *appVersion = new QLabel(QString("Rclone Explorer %1").arg(RCLONE_BROWSER_VERSION), this);
-  appVersion->setContentsMargins(6, 0, 6, 0);
-  ui.statusBar->insertWidget(0, appVersion);
+  mAppVersion = new QLabel(QString("Rclone Explorer %1").arg(RCLONE_BROWSER_VERSION), this);
+  mAppVersion->setTextFormat(Qt::RichText);
+  mAppVersion->setContentsMargins(6, 0, 6, 0);
+  ui.statusBar->insertWidget(0, mAppVersion);
   ui.statusBar->addPermanentWidget(mRcloneStatus);
   QObject::connect(mRcloneStatus, &QLabel::linkActivated, this,
                    [this](const QString &link) {
@@ -1187,6 +1191,11 @@ void MainWindow::setupRcloneUpdater() {
                        offerRcloneDownload();
                      }
                    });
+
+  if (IsFlatpak()) {
+    updateRcloneStatus();
+    return; // Flathub keeps the bundled rclone up to date
+  }
 
   // Help menu entries.
   ui.menuHelp->insertSeparator(ui.menuHelp->actions().value(0));
@@ -1206,6 +1215,192 @@ void MainWindow::setupRcloneUpdater() {
   });
 
   updateRcloneStatus();
+}
+
+// --------------------------------------------- Rclone Explorer updates --
+
+void MainWindow::setupAppUpdater() {
+  if (!AppUpdater::checksWanted()) {
+    return; // a Flatpak is updated by Flathub
+  }
+  mAppUpdater = new AppUpdater(this);
+  QObject::connect(mAppVersion, &QLabel::linkActivated, this, [this](const QString &link) {
+    if (link == "app-update") {
+      offerAppUpdate(true);
+    }
+  });
+
+  auto *checkNow = new QAction(tr("Check for Rclone &Explorer updates…"), this);
+  ui.menuHelp->insertAction(ui.menuHelp->actions().value(0), checkNow);
+  QObject::connect(checkNow, &QAction::triggered, this, [this]() { checkAppUpdate(true); });
+
+  auto *autoCheck = new QAction(tr("Check for Rclone Explorer updates automatically"), this);
+  autoCheck->setCheckable(true);
+  autoCheck->setChecked(GetSettings()->value("Settings/checkAppUpdates", true).toBool());
+  ui.menuHelp->insertAction(ui.menuHelp->actions().value(1), autoCheck);
+  QObject::connect(autoCheck, &QAction::toggled, this,
+                   [](bool on) { GetSettings()->setValue("Settings/checkAppUpdates", on); });
+}
+
+void MainWindow::updateAppVersionLabel() {
+  if (!mAppVersion) {
+    return;
+  }
+  const QString current = QStringLiteral(RCLONE_BROWSER_VERSION);
+  if (!mLatestApp.version.isEmpty() &&
+      AppUpdate::compareVersions(mLatestApp.version, current) > 0) {
+    mAppVersion->setText(tr("Rclone Explorer %1 — <a href=\"app-update\">update to %2</a>")
+                             .arg(current, mLatestApp.version.toHtmlEscaped()));
+  } else {
+    mAppVersion->setText(tr("Rclone Explorer %1").arg(current));
+  }
+}
+
+void MainWindow::maybeAutoCheckApp() {
+  if (!mAppUpdater || !GetSettings()->value("Settings/checkAppUpdates", true).toBool()) {
+    return;
+  }
+  static bool done = false; // once per start, at most once a day
+  if (done) {
+    return;
+  }
+  done = true;
+  const QDateTime last = GetSettings()->value("Settings/lastAppUpdateCheckTime").toDateTime();
+  if (last.isValid() && last.secsTo(QDateTime::currentDateTimeUtc()) < 20 * 3600) {
+    return;
+  }
+  checkAppUpdate(false);
+}
+
+void MainWindow::checkAppUpdate(bool interactive) {
+  if (!mAppUpdater || mAppUpdater->isBusy()) {
+    return;
+  }
+  if (interactive) {
+    mStatusMessage->setText(tr("Checking for Rclone Explorer updates…"));
+  }
+  auto *ctx = new QObject(this);
+  QObject::connect(mAppUpdater, &AppUpdater::found, ctx,
+                   [this, ctx, interactive](const AppUpdate::Release &release) {
+                     ctx->deleteLater();
+                     mStatusMessage->clear();
+                     mLatestApp = release;
+                     GetSettings()->setValue("Settings/lastAppUpdateCheckTime",
+                                             QDateTime::currentDateTimeUtc());
+                     updateAppVersionLabel();
+                     offerAppUpdate(interactive);
+                   });
+  QObject::connect(mAppUpdater, &AppUpdater::failed, ctx,
+                   [this, ctx, interactive](const QString &error) {
+                     ctx->deleteLater();
+                     mStatusMessage->clear();
+                     if (interactive) {
+                       QMessageBox::warning(this, tr("Update check failed"), error);
+                     }
+                   });
+  mAppUpdater->check();
+}
+
+void MainWindow::offerAppUpdate(bool interactive) {
+  const QString current = QStringLiteral(RCLONE_BROWSER_VERSION);
+  if (mLatestApp.version.isEmpty() ||
+      AppUpdate::compareVersions(mLatestApp.version, current) <= 0) {
+    if (interactive) {
+      QMessageBox::information(this, tr("Rclone Explorer is up to date"),
+                               tr("You have the latest version (%1).").arg(current));
+    }
+    return;
+  }
+  auto settings = GetSettings();
+  if (!interactive &&
+      settings->value("Settings/skippedAppVersion").toString() == mLatestApp.version) {
+    return; // background checks ask once per version
+  }
+
+  QMessageBox box(this);
+  box.setIcon(QMessageBox::Information);
+  box.setWindowTitle(tr("Rclone Explorer update"));
+  box.setTextFormat(Qt::RichText);
+  box.setText(tr("<b>Rclone Explorer %1 is available.</b><br>You have %2.")
+                  .arg(mLatestApp.version.toHtmlEscaped(), current));
+  QString info;
+  const bool install = AppUpdater::canInstall();
+  if (AppUpdater::kind() == AppUpdate::Kind::PortableZip) {
+    info = tr("It is downloaded from GitHub, checked against its published checksum and "
+              "installed into this folder; Rclone Explorer then restarts. Your settings, "
+              "saved tasks, mirrors, rclone and remotes are kept.");
+  } else if (install) {
+    info = tr("Its setup is downloaded from GitHub, checked against its published "
+              "checksum and run; Rclone Explorer then restarts. Your settings are kept.");
+  } else {
+    info = tr("Download it from the release page.");
+  }
+  if (mLatestApp.page.isValid()) {
+    info += tr("<br><br><a href=\"%1\">What's new in %2</a>")
+                .arg(mLatestApp.page.toString(QUrl::FullyEncoded).toHtmlEscaped(),
+                     mLatestApp.version.toHtmlEscaped());
+  }
+  box.setInformativeText(info);
+  auto *go = box.addButton(install ? tr("Update now") : tr("Open download page"),
+                           QMessageBox::AcceptRole);
+  auto *skip = box.addButton(tr("Skip this version"), QMessageBox::RejectRole);
+  box.addButton(tr("Later"), QMessageBox::RejectRole);
+  box.setDefaultButton(go);
+  box.exec();
+  if (box.clickedButton() == skip) {
+    settings->setValue("Settings/skippedAppVersion", mLatestApp.version);
+  } else if (box.clickedButton() == go) {
+    if (install) {
+      installAppUpdate();
+    } else {
+      QDesktopServices::openUrl(mLatestApp.page.isValid()
+                                    ? mLatestApp.page
+                                    : QUrl("https://github.com/Jackpison/RcloneExplorer/releases/latest"));
+    }
+  }
+}
+
+void MainWindow::installAppUpdate() {
+  if (mJobCount > 0) {
+    QMessageBox::information(
+        this, tr("Rclone Explorer update"),
+        tr("Rclone Explorer restarts to update. Wait for the running transfers, mounts and "
+           "streams to finish, or stop them, then update."));
+    return;
+  }
+  auto *dlg = new QProgressDialog(tr("Preparing…"), tr("Cancel"), 0, 0, this);
+  dlg->setWindowTitle(tr("Updating Rclone Explorer"));
+  dlg->setWindowModality(Qt::WindowModal);
+  dlg->setMinimumDuration(0);
+  dlg->setAutoClose(false);
+  dlg->setAutoReset(false);
+  auto *ctx = new QObject(dlg);
+  QObject::connect(mAppUpdater, &AppUpdater::status, ctx,
+                   [dlg](const QString &text) { dlg->setLabelText(text); });
+  QObject::connect(mAppUpdater, &AppUpdater::progress, ctx, [dlg](qint64 got, qint64 total) {
+    dlg->setMaximum(total > 0 ? 1000 : 0);
+    if (total > 0) {
+      dlg->setValue(int(got * 1000 / total));
+    }
+  });
+  QObject::connect(dlg, &QProgressDialog::canceled, mAppUpdater, &AppUpdater::cancel);
+  QObject::connect(mAppUpdater, &AppUpdater::failed, ctx, [this, dlg](const QString &error) {
+    dlg->deleteLater();
+    QMessageBox::warning(this, tr("Update failed"), error);
+  });
+  QObject::connect(mAppUpdater, &AppUpdater::readyToRestart, ctx, [this, dlg]() {
+    dlg->deleteLater();
+    if (AppUpdater::kind() == AppUpdate::Kind::PortableZip) {
+      // the new exe waits until this one has let go of the single-instance lock
+      QProcess::startDetached(QCoreApplication::applicationFilePath(), {"--after-update"},
+                              QCoreApplication::applicationDirPath());
+    }
+    mCloseToTray = false;
+    close();
+    qApp->quit();
+  });
+  dlg->show();
+  mAppUpdater->install(mLatestApp);
 }
 
 void MainWindow::updateRcloneStatus() {
@@ -1231,6 +1426,9 @@ void MainWindow::updateRcloneStatus() {
 }
 
 void MainWindow::maybeAutoCheckRclone() {
+  if (IsFlatpak()) {
+    return;
+  }
   auto settings = GetSettings();
   if (!settings->value("Settings/checkRcloneUpdates", true).toBool()) {
     return;

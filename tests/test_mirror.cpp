@@ -233,6 +233,23 @@ private slots:
 #endif
   }
 
+  void chainsAreFlagged() {
+    // Drive -> pCloud:X, then pCloud:X -> Koofr: allowed, but the first one
+    // writes into the second one's source, so saving it asks first
+    const Plan a = plan("Drive", "X", {{"pCloud", "X"}});
+    const Plan b = plan("pCloud", "X", {{"Koofr", "X"}});
+    QVERIFY(validate(a, {b}).isEmpty());
+    QVERIFY(validate(b, {a}).isEmpty());
+    QVERIFY(!feedsOtherMirror(a, {b}).isEmpty());
+    QVERIFY(feedsOtherMirror(b, {a}).isEmpty()); // b reads a's copy: nothing to ask
+    QVERIFY(!feedsOtherMirror(plan("Drive", "Y", {{"pCloud", ""}}), {b}).isEmpty()); // whole remote
+    QVERIFY(feedsOtherMirror(plan("Drive", "Y", {{"pCloud", "Other"}}), {b}).isEmpty());
+    // folders on this PC too
+    const Plan up = plan(QString(), P("/data/Pictures"), {{"pCloud", "Pictures"}});
+    QVERIFY(!feedsOtherMirror(plan("Drive", "P", {{QString(), P("/data/Pictures/new")}}), {up}).isEmpty());
+    QVERIFY(feedsOtherMirror(plan("Drive", "P", {{QString(), P("/data/Other")}}), {up}).isEmpty());
+  }
+
   void reportIsParsed() {
     const QByteArray r = "+ new.jpg\n* changed.jpg\r\n- gone.jpg\n= same.jpg\n! broken.jpg\n"
                          "+ sub folder/b.jpg\n\nnonsense\n";

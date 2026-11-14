@@ -286,6 +286,28 @@ QString validate(const Plan &plan, const QList<Plan> &others) {
   return QString();
 }
 
+QString feedsOtherMirror(const Plan &plan, const QList<Plan> &others) {
+  for (const Target &t : plan.targets) {
+    for (const Plan &other : others) {
+      if (other.id == plan.id ||
+          other.sourceRemote.compare(t.remote, Qt::CaseInsensitive) != 0) {
+        continue;
+      }
+      const bool hit = t.local() ? localOverlaps(other.sourcePath, t.path)
+                                 : overlaps(other.sourcePath, t.path);
+      if (hit) {
+        const QString where = t.local() ? QDir::toNativeSeparators(t.path)
+                                        : remotePath(t.remote, t.path);
+        return QObject::tr("%1 is also the folder that the mirror of %2 copies from. Every "
+                           "sync of this mirror changes what that mirror copies, and with "
+                           "\"delete\" or \"trash\" it can remove files there.")
+            .arg(where, other.title());
+      }
+    }
+  }
+  return QString();
+}
+
 QStringList filterArgs(const Plan &plan) {
   QStringList l;
   if (!plan.exportGoogleDocs) {

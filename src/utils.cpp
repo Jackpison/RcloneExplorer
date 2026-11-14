@@ -321,6 +321,8 @@ QString GetRclone() {
 
 void SetRclone(const QString &rclone) { gRclone = rclone.trimmed(); }
 
+bool IsFlatpak() { return !qEnvironmentVariableIsEmpty("FLATPAK_ID"); }
+
 void UseRclonePassword(QProcess *process) {
   if (!gRclonePassword.isEmpty()) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();

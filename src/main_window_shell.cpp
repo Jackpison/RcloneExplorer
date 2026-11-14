@@ -6,6 +6,7 @@
 #include "mirror_page.h"
 #include "remote_widget.h"
 #include "theme.h"
+#include "theme_reveal.h"
 #include "utils.h"
 
 namespace {
@@ -201,8 +202,11 @@ void MainWindow::buildShell() {
   mThemeButton->setIconSize(QSize(20, 20));
   mThemeButton->setCursor(Qt::PointingHandCursor);
   QObject::connect(mThemeButton, &QToolButton::clicked, this, [this]() {
-    Theme::toggle();
-    updateThemeButton();
+    ThemeReveal::run(mThemeButton, [this]() {
+      Theme::toggle();
+      updateThemeButton();
+    });
+    ThemeReveal::spinIcon(mThemeButton);
   });
   bl->addWidget(mThemeButton);
   navLayout->addWidget(brand);

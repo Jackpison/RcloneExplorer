@@ -4,46 +4,24 @@ Ideas for future updates. They are collected here and shipped together in one
 release rather than one at a time. Tick an item off (or remove it) once it is
 in a release, and mention it in `CHANGELOG.md`.
 
-## Next release: 5.4.5
+## Shipped in 5.4.2
 
-Agreed on 2026-11-14. Items are described in the sections below.
-
-1. Update Rclone Explorer from inside the app (Windows)
-2. Mirror: warn when a destination is another mirror's source
-3. Linux: desktop portal (native dialogs, system light/dark) and the Wayland window icon
-4. New Mirror screenshots with This PC (README and website)
-5. Tidy the shadowed-name compiler warnings
-6. Faster light/dark switch, if a clear improvement is possible
-7. Windows installer (`.exe` setup) next to the portable zip
-8. Flatpak ready for Flathub (manifest, store listing, CI build); submitting is a separate step, see below
-9. Animated light/dark switch: the new theme spreads in a circle from the sun/moon button over about 0.4 s, the icon turns as it swaps. Inspired by Magic UI's [Animated Theme Toggler](https://magicui.design/docs/components/animated-theme-toggler) (a web component using the View Transitions API); written natively in Qt: snapshot the window, switch the theme underneath, then reveal it through a growing circle. The snapshot also hides the restyling pause, so it goes together with item 6. Respects the system's "reduce animations" setting
+Rclone Explorer updates itself; Windows installer next to the portable zip;
+Flatpak ready for Flathub; desktop portal on Linux (native dialogs, system
+light/dark, Wayland app id); Mirror asks before writing into another mirror's
+source; This PC screenshots; animated light/dark switch (inspired by Magic UI's
+[Animated Theme Toggler](https://magicui.design/docs/components/animated-theme-toggler)),
+which also hides the restyling pause; shadowed-name warnings tidied.
 
 ## Windows
 
-- [ ] **Update Rclone Explorer from inside the app**, the way rclone is already updated: check GitHub for a newer release, download the Windows zip, verify it against the release's `SHA256SUMS.txt`, replace the program files and restart. Your settings (`Rclone Explorer.ini`), `tasks.bin`, `mirrors.json`, `mirror_history.json`, `rclone\` and your own logos in `icons\remotes\` are kept. Today a manual update means renaming the old folder, extracting the new zip and copying those files back. The check is a new network call, so add it to the README privacy statement first, with a setting to turn it off.
-- [ ] **Installer (`.exe` setup) next to the portable zip.** Built with Inno Setup in the release workflow. Installs per user into `%LOCALAPPDATA%\Programs` (no administrator rights needed), adds a Start menu shortcut and an uninstaller, and runs in normal (not portable) mode, so settings live in `%APPDATA%` and an update never touches them. Also the better fit for winget.
 - [ ] **Code signing with SignPath, once the app has grown.** SignPath Foundation offers free signing for open-source projects but turned down the first request (November 2026); apply again when the project has more users. Until then releases are unsigned and users check downloads against `SHA256SUMS.txt`.
+- [ ] **winget with the installer.** The winget manifests still use the portable zip; the setup (`InstallerType: inno`, per-user scope) is the better fit now that it exists.
 
 ## Linux desktop
 
-- [ ] **Wayland and desktop portal.** Use the desktop portal for file dialogs and the light/dark setting (GNOME or KDE dialogs, system theme). Set the desktop file name so the window shows its proper icon and launcher under Wayland. About 20 lines in `main.cpp`. A first attempt exists on the old branch `claude/confident-sagan-ofhan9` (from the Rclone Browser days); write it fresh with Rclone Explorer names instead of reviving that branch.
-- [ ] **Flatpak, published on Flathub** (a loose `.flatpak` file gets no updates, so it adds nothing over the AppImage).
-  - In this repo: manifest under `packaging/flatpak/` (KDE runtime with Qt 6, rclone bundled with its checksum), AppStream store listing with screenshots, desktop file and icon, and a CI job that builds and test-runs it. App id `io.github.jackpison.RcloneExplorer`.
-  - Sandbox: mounting needs FUSE and is hidden in the Flatpak (use the AppImage for that); home folder access for folders on this PC; the app and rclone updaters are off because Flathub delivers updates.
-  - Submitting: a pull request to `flathub/flathub` from the owner's GitHub account, then Flathub's review (days to weeks, often with requested changes). After approval Flathub creates the app's own repository, where each release is a small update.
-
-## Mirror
-
-- [ ] Warn when a mirror's destination is another mirror's source. Today only destinations are compared with each other, so mirror B can write into mirror A's source folder.
-- [ ] New screenshots for the README and website showing **This PC** as a source and as a destination.
-
-## Smoothness
-
-- [ ] Switching light/dark takes about 0.14 s (the whole app is restyled). Could be shortened by styling fewer widgets through the app-wide style sheet.
-
-## Code
-
-- [ ] Tidy the compiler warnings about shadowed names (`-Wshadow`), mostly repeated `settings` variables in `remote_widget.cpp`.
+- [ ] **Submit the Flatpak to Flathub** (an owner's step, see `packaging/flatpak/README.md`): take the `flathub-manifest-x.y.z` artifact of a release and open the pull request to `flathub/flathub`. Reviewers may ask about the home folder access and the bundled rclone binary.
+- [ ] **Sounds and staying awake in the Flatpak.** Both use helper programs (`paplay`, `systemd-inhibit`) that the sandbox does not have; the Flatpak quietly goes without them. They could use the portal and Qt Multimedia instead.
 
 ## Housekeeping
 

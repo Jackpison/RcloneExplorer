@@ -118,6 +118,34 @@ jobs:
           Compress-Archive "$dir" "dist\RcloneExplorer-$ver-windows-x64.zip"
           "VERSION=$ver" | Out-File -Append $env:GITHUB_ENV
 
+          # Setup (.exe) built from the same folder with Inno Setup, pinned and
+          # checksum-verified like everything else.
+          $inno = "innosetup-6.7.4.exe"
+          Invoke-WebRequest "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/$inno" -OutFile $inno
+          if ((Get-FileHash $inno -Algorithm SHA256).Hash.ToLower() -ne "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c") { throw "Inno Setup checksum mismatch" }
+          $isdir = "$env:RUNNER_TEMP\inno"
+          $p = Start-Process -FilePath ".\$inno" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/DIR=$isdir" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Inno Setup could not be installed ($($p.ExitCode))" }
+          & "$isdir\ISCC.exe" "/DMyVersion=$ver" "/DSource=$((Resolve-Path $dir).Path)" "/O$((Resolve-Path dist).Path)" packaging\windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "building the setup failed" }
+          $setup = "dist\RcloneExplorer-$ver-windows-x64-setup.exe"
+
+          # Smoke test of the setup: install silently, the installed app must
+          # start (in normal mode, finding its rclone), then uninstall cleanly.
+          $target = "$env:RUNNER_TEMP\re-installed"
+          $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$target","/MERGETASKS=!desktopicon","/NOLAUNCH" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "setup failed ($($p.ExitCode))" }
+          Get-Process -Name "Rclone Explorer" -ErrorAction SilentlyContinue | Stop-Process -Force
+          if (Test-Path "$target\Rclone Explorer.ini") { throw "the setup installed the portable ini" }
+          if (-not (Test-Path "$target\rclone\rclone.exe")) { throw "the setup did not install rclone" }
+          $p = Start-Process -FilePath "$target\Rclone Explorer.exe" -ArgumentList "--selftest" `
+                 -PassThru -NoNewWindow -RedirectStandardOutput selftest-setup.txt
+          if (-not $p.WaitForExit(90000)) { $p.Kill(); throw "installed self-test timed out" }
+          if ($p.ExitCode -ne 0) { throw "installed self-test failed: $(Get-Content selftest-setup.txt -Raw)" }
+          $p = Start-Process -FilePath "$target\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -PassThru -Wait
+          Start-Sleep -Seconds 3
+          if (Test-Path "$target\Rclone Explorer.exe") { throw "uninstall left the app behind" }
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: RcloneExplorer-${{ env.VERSION }}-windows-x64
@@ -126,7 +154,9 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-windows
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
           if-no-files-found: error
 
   linux:
@@ -191,19 +221,8 @@ jobs:
           cp build/build/rclone-explorer AppDir/usr/bin/
           cp packaging/linux/rclone-explorer.desktop AppDir/usr/share/applications/
           cp packaging/linux/rclone-explorer.png AppDir/usr/share/icons/hicolor/256x256/apps/
-          cp packaging/linux/io.github.jackpison.RcloneExplorer.metainfo.xml AppDir/usr/share/metainfo/
-          # add this version to the AppStream metadata, then validate it
-          python3 - "$ver" AppDir/usr/share/metainfo/io.github.jackpison.RcloneExplorer.metainfo.xml <<'PY'
-          import datetime, sys
-          ver, path = sys.argv[1], sys.argv[2]
-          today = datetime.date.today().isoformat()
-          xml = open(path, encoding="utf-8").read()
-          rel = (f'  <releases>\n    <release version="{ver}" date="{today}">\n'
-                 f'      <url>https://github.com/Jackpison/RcloneExplorer/releases/tag/v{ver}</url>\n'
-                 f'    </release>\n  </releases>\n')
-          xml = xml.replace("</component>", rel + "</component>")
-          open(path, "w", encoding="utf-8").write(xml)
-          PY
+          # this version's release entry is added to the AppStream metadata
+          python3 packaging/linux/metainfo.py "$ver" AppDir/usr/share/metainfo/io.github.jackpison.RcloneExplorer.metainfo.xml
           appstreamcli validate --no-net AppDir/usr/share/metainfo/io.github.jackpison.RcloneExplorer.metainfo.xml
           mkdir -p AppDir/usr/share/rclone-browser/icons/remotes
           cp icons/remotes/*.png AppDir/usr/share/rclone-browser/icons/remotes/
@@ -216,6 +235,11 @@ jobs:
           grep -E "^[0-9a-f]{64}  $zip\$" SHA256SUMS | sha256sum -c -
           python3 -m zipfile -e "$zip" rclone-x
           install -m 755 "$(find rclone-x -name rclone -type f | head -1)" AppDir/usr/bin/rclone
+
+          # desktop portal theme: GNOME/KDE file dialogs and the system light/dark
+          # setting (main.cpp selects it). linuxdeploy bundles what it needs.
+          install -D -m 644 "$QT_ROOT_DIR/plugins/platformthemes/libqxdgdesktopportal.so" \
+            AppDir/usr/plugins/platformthemes/libqxdgdesktopportal.so
 
           # Final file name set here (not renamed afterwards) so the .zsync file
           # refers to the right AppImage. The update information lets
@@ -236,6 +260,11 @@ jobs:
           fi
           if ! head -c 512 "dist/$app.zsync" | grep -aq "^URL: $app\$"; then
             echo "::error::.zsync file does not refer to $app"
+            exit 1
+          fi
+
+          if [ ! -f AppDir/usr/plugins/platformthemes/libqxdgdesktopportal.so ]; then
+            echo "::error::desktop portal theme plugin missing from the AppImage"
             exit 1
           fi
 
@@ -263,6 +292,36 @@ jobs:
             dist/*.AppImage.zsync
           if-no-files-found: error
 
+  flatpak:
+    name: Flatpak
+    # Builds the Flatpak the way Flathub will (KDE runtime from Flathub) and
+    # starts it once. Not a release download: Flathub publishes it.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and test the Flatpak
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak flatpak-builder appstream xvfb dbus-x11
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install --install-deps-from=flathub --force-clean \
+            --disable-rofiles-fuse build-flatpak packaging/flatpak/io.github.jackpison.RcloneExplorer.yml
+          app=io.github.jackpison.RcloneExplorer
+          appstreamcli validate --no-net \
+            "$HOME/.local/share/flatpak/app/$app/current/active/files/share/metainfo/$app.metainfo.xml"
+          desktop-file-validate \
+            "$HOME/.local/share/flatpak/app/$app/current/active/files/share/applications/$app.desktop"
+          # the app must start inside the sandbox, with its bundled rclone
+          out=$(dbus-run-session -- xvfb-run -a flatpak run "$app" --selftest 2>&1) || {
+            echo "::error::Flatpak self-test failed: $(echo "$out" | tr '\n' ' ')"; exit 1; }
+          echo "$out"
+          flatpak run --command=rclone "$app" version | head -1
+
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
@@ -287,7 +346,7 @@ jobs:
           set -euo pipefail
           ver=$(head -1 VERSION | tr -d '[:space:]')
           echo "VERSION=$ver" >> "$GITHUB_ENV"
-          (cd dist && sha256sum *.zip *.AppImage *.zsync > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          (cd dist && sha256sum *.zip *-setup.exe *.AppImage *.zsync > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python3 - "$ver" <<'PY'
           import re, sys
           ver = sys.argv[1]
@@ -296,7 +355,8 @@ jobs:
           notes = m.group(1).strip() if m else "See CHANGELOG.md for details."
           notes += (
               "\n\n---\n**Downloads**\n\n"
-              f"- **Windows 10/11:** `RcloneExplorer-{ver}-windows-x64.zip`, extract anywhere and run `Rclone Explorer.exe`.\n"
+              f"- **Windows 10/11, installer:** `RcloneExplorer-{ver}-windows-x64-setup.exe`, installs for your user (no administrator rights) with a Start menu entry; updates keep your settings.\n"
+              f"- **Windows 10/11, portable:** `RcloneExplorer-{ver}-windows-x64.zip`, extract anywhere and run `Rclone Explorer.exe`.\n"
               f"- **Linux (x86_64):** `RcloneExplorer-{ver}-x86_64.AppImage`, make it executable (`chmod +x`) and run it.\n\n"
               "SHA-256 checksums are in `SHA256SUMS.txt`."
           )
@@ -309,6 +369,7 @@ jobs:
           body_path: dist/release-notes.md
           files: |
             dist/*.zip
+            dist/*-setup.exe
             dist/*.AppImage
             dist/*.zsync
             dist/SHA256SUMS.txt
@@ -324,6 +385,16 @@ jobs:
         with:
           name: winget-manifests-${{ env.VERSION }}
           path: winget
+
+      # Flathub copy of the Flatpak manifest, building this release's tag
+      # (submitted to github.com/flathub by hand, see packaging/flatpak/README.md)
+      - name: Flathub manifest
+        run: python3 packaging/flatpak/flathub_manifest.py "$VERSION" "$GITHUB_SHA" flathub
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flathub-manifest-${{ env.VERSION }}
+          path: flathub
 
       # The repository doubles as a Scoop bucket:
       #   scoop bucket add rclone-explorer https://github.com/Jackpison/RcloneExplorer

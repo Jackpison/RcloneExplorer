@@ -55,10 +55,19 @@ QString RcloneUpdater::managedPath() {
 
 QString RcloneUpdater::bundledPath() {
 #ifdef Q_OS_WIN
-  return QString(); // the Windows zip ships rclone in the managed location
+  // The portable zip names rclone in its ini. The installer puts rclone next
+  // to the exe, where it stays until an update downloads a newer one.
+  if (IsPortableMode()) {
+    return QString();
+  }
+  const QString path = QDir(qApp->applicationDirPath()).filePath("rclone/rclone.exe");
+  return QFileInfo::exists(path) ? path : QString();
 #else
   // Inside an AppImage, rclone is bundled next to the app binary. Its path
   // changes on every start (temporary mount), so it is never saved.
+  if (IsFlatpak()) {
+    return QStringLiteral("/app/bin/rclone"); // updated with the Flatpak
+  }
   const QString appDir = qEnvironmentVariable("APPDIR");
   if (appDir.isEmpty()) {
     return QString();

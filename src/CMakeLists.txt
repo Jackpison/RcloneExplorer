@@ -23,6 +23,9 @@ set(SOURCES
   legacy_ini.cpp legacy_ini.h
   rclone_updater.cpp rclone_updater.h
   theme.cpp theme.h
+  theme_reveal.cpp theme_reveal.h
+  app_update.cpp app_update.h
+  app_updater.cpp app_updater.h
   utils.cpp utils.h
   command_args.h elided_label.h
   sound_player.cpp sound_player.h
@@ -140,5 +143,11 @@ if(RB_BUILD_TESTS)
     target_link_libraries(test_mirror PRIVATE Qt::Core Qt::Test)
     set_target_properties(test_mirror PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     add_test(NAME mirror COMMAND test_mirror)
+
+    add_executable(test_app_update ../tests/test_app_update.cpp app_update.cpp app_update.h)
+    target_include_directories(test_app_update PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(test_app_update PRIVATE Qt::Core Qt::Test)
+    set_target_properties(test_app_update PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    add_test(NAME app_update COMMAND test_app_update)
   endif()
 endif()

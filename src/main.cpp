@@ -1,3 +1,4 @@
+#include "app_update.h"
 #include <cstdio>
 #include "main_window.h"
 #include "theme.h"
@@ -16,6 +17,16 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+#if defined(Q_OS_LINUX)
+  // The desktop portal gives the GNOME or KDE file dialogs (the only way to
+  // reach files from inside a Flatpak) and tells Qt whether the system is
+  // light or dark, which the "System" theme follows. Without a running portal
+  // Qt quietly uses its own dialogs. A theme the user chose is kept.
+  if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME")) {
+    qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+  }
+#endif
+
   QApplication app(argc, argv);
 
   //  app.setApplicationDisplayName("Rclone Explorer");
@@ -24,7 +35,9 @@ int main(int argc, char *argv[]) {
   // Settings keep their old internal name ("rclone-browser") on purpose, so
   // everyone's settings carry over from Rclone Browser. Only the visible name
   // changed.
-  app.setDesktopFileName(QStringLiteral("rclone-explorer"));
+  // the window's app id under Wayland: the name of the installed desktop file
+  app.setDesktopFileName(IsFlatpak() ? qEnvironmentVariable("FLATPAK_ID")
+                                     : QStringLiteral("rclone-explorer"));
   MigrateLegacyPortableIni();
   app.setWindowIcon(QIcon(":/icons/icon.png"));
 
@@ -221,7 +234,9 @@ int main(int argc, char *argv[]) {
   QLockFile lockFile(QDir::temp().filePath("RcloneExplorer_" +
                                            QString::fromLatin1(installId) + ".lock"));
 
-  if (!lockFile.tryLock(100)) {
+  // Started by an update: the old version is still closing, so wait for it.
+  const bool afterUpdate = QCoreApplication::arguments().contains("--after-update");
+  if (!lockFile.tryLock(afterUpdate ? 20000 : 100)) {
     // if already running display warning and quit
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Warning);
@@ -231,6 +246,9 @@ int main(int argc, char *argv[]) {
     return static_cast<int>(
         0x80004004); // exit immediately if another instance is running
   }
+
+  // files an update replaced while they were in use (see AppUpdate::apply)
+  AppUpdate::removeLeftovers(QCoreApplication::applicationDirPath());
 
   // Apply fonts, colours and the style sheet before any widget exists, so
   // nothing is created with Windows' default font and styled from it.
