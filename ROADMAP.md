@@ -32,7 +32,3 @@ which also hides the restyling pause; shadowed-name warnings tidied.
 ## Later
 
 - [ ] **Stop publishing the zip under its old name** (`RcloneExplorer-<version>-windows-x64.zip`) once few people still run 5.4.2: remove the `Copy-Item` line after `Compress-Archive` in the Update workflow and the release-notes mention. The app's fallback to the old name can stay.
-
-## Housekeeping
-
-- [ ] Delete old branches on GitHub (Code, Branches): everything except `main`. All their work is in `main` or listed above.
