@@ -228,7 +228,7 @@ jobs:
           cmake -S . -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build-asan --target test_mirror test_app_update test_commands test_rclone_output test_natural_sort test_legacy_ini
+          cmake --build build-asan --target test_mirror test_app_update test_commands test_rclone_output test_natural_sort test_legacy_ini test_safe_file
           QT_QPA_PLATFORM=offscreen ctest --test-dir build-asan --output-on-failure
 
       - name: Build AppImage
