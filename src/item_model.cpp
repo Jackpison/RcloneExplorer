@@ -520,6 +520,11 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
       for (auto it = lines.crbegin(); it != lines.crend() && error.isEmpty(); ++it) {
         error = it->trimmed().remove(stamp);
       }
+      // "Failed to lsjson with 2 errors: last error was: error in ListJSON:
+      // directory not found" says no more than "directory not found"
+      static const QRegularExpression wrapper(
+          R"(^(Failed to \w+( with \d+ errors?)?: )?(last error was: )?(error in \w+: )?)");
+      error.remove(wrapper);
       emit loadFailed(mRemote + ":" + parent->path.path(),
                       error.isEmpty() ? tr("rclone could not list it.") : error);
       return;

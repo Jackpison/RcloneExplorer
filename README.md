@@ -150,6 +150,23 @@ Windows releases are not code-signed yet, so Windows may warn about `Rclone Expl
 - Committers, reviewers and release approvers: [Jackpison](https://github.com/Jackpison)
 - The download also contains files from other projects (the Qt libraries and rclone), as published by those projects.
 
+## FAQ
+
+**Is Rclone Explorer the same as Rclone Browser?**
+Yes. Rclone Explorer is the continuation of [Rclone Browser](https://github.com/mmozeiko/RcloneBrowser) (by mmozeiko, DinCahill and kapitainsky) under a new name, with a new design and new features such as mirrors, schedules and tabs. If you searched for an *Rclone Browser download* or an *Rclone Browser alternative*, this is it: settings and saved tasks of Rclone Browser carry over.
+
+**Is it free?**
+Yes, free and open source under the MIT license, with no account, no telemetry and no ads.
+
+**Do I need to install rclone separately?**
+No. The Windows and Linux downloads include rclone and keep it up to date. Your existing rclone remotes appear automatically.
+
+**Which cloud services work?**
+Every storage type rclone supports: Google Drive, OneDrive, Dropbox, pCloud, Koofr, Filen, Amazon S3, Backblaze B2, SFTP, WebDAV, encrypted remotes and more than 70 others.
+
+**Is there an rclone GUI for Linux?**
+Yes, this one: an AppImage for 64-bit Linux that runs on Ubuntu, Fedora, Debian, Mint, Arch, openSUSE and others.
+
 ## Privacy
 
 Rclone Explorer has no account, no telemetry and no analytics. It only connects to other systems in these cases:

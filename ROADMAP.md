@@ -48,6 +48,8 @@ All done; they ship together once the version is bumped.
 - [x] **`SECURITY.md`**: how to report a security problem privately.
 - [x] **Crash fix**: Rename, Mount, Download and the other file buttons crashed when the item they pointed at had just been deleted or reloaded.
 - [x] **Faster reloads of big folders**: rows that disappeared were removed one at a time, which froze the window for tens of thousands of files.
+- [x] **Deleting the last file in Icons view opened the folder next to it**, and buttons could stay greyed out after a delete (found while testing the app).
+- [x] **README and website**: new screenshots from a demo set-up (`tools/screenshots/`), a FAQ, SEO, "formerly Rclone Browser" in more places.
 - [x] Second review of the fixes: no quitting while an update swaps files, a clear message when rclone cannot list the remotes, the "Could not open" strip clears when you move on.
 
 ## Shipped in 5.4.3

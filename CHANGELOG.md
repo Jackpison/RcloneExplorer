@@ -11,6 +11,7 @@
 -   Big folders reload much faster: rows that disappeared were removed one at a time, freezing the window for tens of thousands of files
 -   Picking a remote folder and the remote suggestions in Compare, Copy to… and Bisync no longer wait for rclone with the window frozen
 -   `SECURITY.md` explains how to report a security problem privately
+-   README and website: new screenshots, a FAQ, and better search results (also for "Rclone Browser"). The screenshots are made from a demo set-up in `tools/screenshots/`, so they can be taken again for each release
 
 ### Fixed
 -   **Quitting with several jobs running stopped only every other one** properly; the rest were killed, which on Linux could leave a broken mount behind
@@ -19,6 +20,7 @@
 -   **Two copies of the AppImage could run at once**, so schedules and mirrors ran twice. On Linux the "one at a time" lock is now per user
 -   Crash: Rename, Mount, Download and the other file buttons crashed when the item they pointed at had just been deleted or reloaded
 -   Changed sizes and dates sometimes did not show after a refresh
+-   Deleting the last file of a folder in the Icons view opened the folder next to it, and after a delete the Rename, Move and Delete buttons could stay greyed out
 -   **Updates**: *Keep running* was ignored when a scheduled task started during the download; Cancel did not work while unpacking (also for rclone updates); the window froze while the portable version copied its files; the checksum is now taken from the saved file and a full disk is reported; *Update now* during an update check no longer hangs on "Preparing…"; one failure shows one message; files a new version no longer has are removed; the app cannot be closed halfway through swapping files
 -   Cancelling a transfer or stream, and the end of a transfer (the sleep lock), no longer make the window wait
 -   The Flatpak could keep the computer awake after transfers stopped and started again quickly

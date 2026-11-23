@@ -69,7 +69,11 @@ QString root = isLocal ? "/" : QString();
 
   QObject::connect(
       ui.tree->selectionModel(), &QItemSelectionModel::selectionChanged, this,
-      [=, this](const QItemSelection &selection) {
+      [=, this]() {
+        // What is selected now, not just what this change added: removing a
+        // row (a delete, a reload) reports an empty change while other items
+        // are still selected, which left every button greyed out.
+        const QItemSelection selection = ui.tree->selectionModel()->selection();
         // only this widget's own actions, not those inside child widgets
         // (e.g. the filter box's clear button)
         for (auto child :
@@ -319,10 +323,27 @@ QString root = isLocal ? "/" : QString();
       ProgressDialog progress("Delete", "Deleting...", pathMsg, &process, this);
       if (progress.exec() == QDialog::Accepted) {
         QModelIndex above = index.parent();
-        // the row below (a sibling: the parent of a top-level row has no model)
+        // Select the next item (else the file before, else the folder), and
+        // make it the current one too: otherwise the view picks a neighbour
+        // itself once the row is gone, and if that is a folder the icon view
+        // opened it. (A folder before it would also become the address.)
         QModelIndex next = index.sibling(index.row() + 1, 0);
-        ui.tree->selectionModel()->select(next.isValid() ? next : above,
-                                          QItemSelectionModel::SelectCurrent);
+        if (!next.isValid() && index.row() > 0) {
+          next = index.sibling(index.row() - 1, 0);
+          if (model->isFolder(next)) {
+            next = QModelIndex();
+          }
+        }
+        const QModelIndex target = next.isValid() ? next : above;
+        // the icon view keeps its own current item: move it too (its
+        // selection is copied into the tree)
+        if (target.parent() == mGrid->rootIndex()) {
+          mGrid->selectionModel()->setCurrentIndex(target, QItemSelectionModel::ClearAndSelect);
+        } else {
+          mGrid->selectionModel()->clear();
+        }
+        ui.tree->selectionModel()->setCurrentIndex(
+            target, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
         model->removeRow(index.row(), above);
       }
     }
@@ -793,7 +814,9 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   QObject::connect(model, &ItemModel::loadFailed, this,
                    [this](const QString &folder, const QString &error) {
                      mLoadErrorFolder = folder;
-                     mLoadError->setText(tr("Could not open %1: %2").arg(folder, error));
+                     // "Filen:" for the top folder reads oddly before a colon
+                     const QString shown = folder.endsWith(':') ? folder.chopped(1) : folder;
+                     mLoadError->setText(tr("Could not open %1: %2").arg(shown, error));
                      mLoadError->show();
                    });
   // only a new listing of that same folder clears it (another folder's
