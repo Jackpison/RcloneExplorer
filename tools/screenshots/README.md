@@ -11,7 +11,7 @@ Needs Linux with `Xvfb`, `xdotool` and ImageMagick (`import`), a built
 
 ```bash
 tools/screenshots/demo.sh setup     # demo files and rclone.conf
-tools/screenshots/demo.sh capture   # home, browser, browser-light, details-light
+tools/screenshots/demo.sh capture   # home, browser, browser-light, details-light, search-light
 tools/screenshots/demo.sh run 2     # start the app (1 = light, 2 = dark) for other shots
 ```
 
@@ -21,4 +21,4 @@ repository and your own settings: the app runs with a separate home folder.
 
 The Transfers shot needs a running transfer: `run 2`, open Google Drive →
 Videos, select a video, **Download**, set the destination and **Run**
-(downloads are limited to 4 MB/s, so the card stays on screen).
+(the demo's speed limit is 4 MB/s, so the card stays on screen).

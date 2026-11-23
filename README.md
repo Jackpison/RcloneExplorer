@@ -36,7 +36,9 @@ Rclone Explorer (formerly Rclone Browser) gives rclone a full graphical interfac
 
 ![A running transfer](docs/transfers-dark.png)
 
-![Details view in light mode](docs/details-light.png)
+![Details view in light mode, with folder sizes](docs/details-light.png)
+
+![Search in a remote](docs/search-light.png)
 
 ## Mirror
 

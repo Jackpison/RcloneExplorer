@@ -353,7 +353,7 @@ jobs:
           out=$(dbus-run-session -- xvfb-run -a flatpak run "$app" --selftest 2>&1) || {
             echo "::error::Flatpak self-test failed: $(echo "$out" | tr '\n' ' ')"; exit 1; }
           echo "$out"
-          flatpak run --command=rclone "$app" version | head -1
+          flatpak run --command=rclone "$app" version | sed -n 1p  # reads it all: head would cut rclone off (exit 141)
 
   release:
     name: Release

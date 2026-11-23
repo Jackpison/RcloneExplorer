@@ -90,7 +90,8 @@ checkRcloneUpdates=false
 theme=${1:-2}
 iconSize=medium
 defaultDownloadDir=$D/dl
-defaultRcloneOptions=--bwlimit 4M
+bandwidthLimit=4M
+showFolderSizes=true
 CONF
   (cd "$D/home" && HOME="$D/home" XDG_CONFIG_HOME="$D/home/.config" XDG_RUNTIME_DIR="$D/runtime" \
     QT_QPA_PLATFORMTHEME= nohup "$APP" > "$D/app.log" 2>&1 &) </dev/null >/dev/null 2>&1
@@ -109,7 +110,15 @@ capture() {
   shot "$D/out/browser-light.png"
   xdotool key ctrl+shift+2; sleep 1.5; xdotool mousemove 430 369 click --repeat 2 --delay 80 1; sleep 2
   xdotool mousemove 430 402 click 1; park
+  sleep 3 # folder sizes are worked out in the background
   shot "$D/out/details-light.png"
+  # Search, from the top of the remote: the Search window on its own
+  xdotool mousemove 434 217 click 1; sleep 1.5 # breadcrumb: Google Drive
+  xdotool key ctrl+shift+f; sleep 1.5
+  local search; search=$(xdotool search --name "^Search Google Drive" | head -1)
+  xdotool windowfocus --sync "$search"; sleep 0.3
+  xdotool type --delay 40 "img_202"; xdotool key Return; sleep 3
+  import -window "$search" "$D/out/search-light.png"
   echo "Screenshots in $D/out"
 }
 
