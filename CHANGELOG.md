@@ -1,6 +1,6 @@
 # Changelog
 
-## [5.4.4] - unreleased
+## [5.4.4] - 2026-11-23
 
 ### Added
 -   **Search in a remote**: the *Search* button next to the filter (Ctrl+Shift+F) finds files and folders by name in the current folder and all its subfolders. Matches show as they are found; *Show in folder* opens the folder that holds one, with it selected

@@ -4,11 +4,11 @@ Ideas for future updates. They are collected here and shipped together in one
 release rather than one at a time. Tick an item off (or remove it) once it is
 in a release, and mention it in `CHANGELOG.md`.
 
-## Planned for 5.4.4
+## Shipped in 5.4.4
 
 Fixes from a second code review (November 2026). None of these are new in
 5.4.3; they were found by reading the code, not reported by users.
-All done; they ship together once the version is bumped.
+All shipped in 5.4.4.
 
 ### Losing or mixing up work
 
