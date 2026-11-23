@@ -22,7 +22,10 @@ public:
 
   // name -> type of every configured remote; `order` as in the sidebar
   void setRemotes(const QMap<QString, QString> &remotes, const QStringList &order);
-  bool isRunning() const { return mActive; }
+
+signals:
+  // a check or sync has ended (not when it was stopped): for a notification
+  void runFinished(const QString &title, const QString &text, bool problem);
 
 protected:
   void showEvent(QShowEvent *e) override;

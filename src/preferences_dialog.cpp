@@ -1,4 +1,5 @@
 #include "preferences_dialog.h"
+#include "rclone_commands.h"
 #include "theme.h"
 #include "utils.h"
 
@@ -111,6 +112,40 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
   // remote icons have a fixed size in the redesigned interface
   ui.groupBox_5->hide();
 
+  // Speed limit for every transfer (rclone's --bwlimit): a row of the form
+  // above, so the dialog stays short enough for small screens
+  {
+    const int row = ui.gridLayout_3->rowCount();
+    auto *label = new QLabel(tr("Speed limit:"));
+    mBandwidth = new QLineEdit;
+    mBandwidth->setPlaceholderText(tr("No limit"));
+    mBandwidth->setClearButtonEnabled(true);
+    mBandwidth->setText(settings->value("Settings/bandwidthLimit").toString());
+    label->setBuddy(mBandwidth);
+    ui.gridLayout_3->addWidget(label, row, 0);
+    ui.gridLayout_3->addWidget(mBandwidth, row, 1);
+    auto *hint = new QLabel(
+        tr("For every transfer, e.g. 10M (10 MiB/s) or 512k. Changes during the day "
+           "with a timetable: 08:00,2M 19:00,off. Saved tasks with their own limit "
+           "keep it."));
+    hint->setWordWrap(true);
+    hint->setProperty("secondary", true);
+    ui.gridLayout_3->addWidget(hint, row + 1, 1, 1, 2);
+    auto *error = new QLabel(tr("rclone does not understand this limit. Use a number "
+                                "with K, M or G, \"off\", or a timetable."));
+    error->setWordWrap(true);
+    Theme::setStatus(error, "error");
+    error->hide();
+    ui.gridLayout_3->addWidget(error, row + 2, 1, 1, 2);
+    auto check = [this, error]() {
+      const bool ok = RcloneCommands::validBandwidth(mBandwidth->text());
+      error->setVisible(!ok);
+      ui.buttonBox->button(QDialogButtonBox::Ok)->setEnabled(ok);
+    };
+    QObject::connect(mBandwidth, &QLineEdit::textChanged, this, check);
+    check();
+  }
+
   ui.playSounds->setChecked(settings->value("Settings/playSounds", true).toBool());
   ui.keepAwake->setChecked(settings->value("Settings/keepAwake", true).toBool());
 
@@ -119,16 +154,15 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
         settings->value("Settings/alwaysShowInTray", false).toBool());
     ui.closeToTray->setChecked(
         settings->value("Settings/closeToTray", false).toBool());
-    ui.notifyFinishedTransfers->setChecked(
-        settings->value("Settings/notifyFinishedTransfers", true).toBool());
   } else {
     ui.alwaysShowInTray->setChecked(false);
     ui.alwaysShowInTray->setDisabled(true);
     ui.closeToTray->setChecked(false);
     ui.closeToTray->setDisabled(true);
-    ui.notifyFinishedTransfers->setChecked(false);
-    ui.notifyFinishedTransfers->setDisabled(true);
   }
+  // not tied to the tray: on Linux the desktop shows them without one
+  ui.notifyFinishedTransfers->setChecked(
+      settings->value("Settings/notifyFinishedTransfers", true).toBool());
 
   ui.showFolderIcons->setChecked(
       settings->value("Settings/showFolderIcons", true).toBool());
@@ -184,6 +218,10 @@ PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
 }
 
 PreferencesDialog::~PreferencesDialog() {}
+
+QString PreferencesDialog::getBandwidthLimit() const {
+  return mBandwidth->text().trimmed();
+}
 
 QString PreferencesDialog::getRclone() const {
   return QDir::fromNativeSeparators(ui.rclone->text());

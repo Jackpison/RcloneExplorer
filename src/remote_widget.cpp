@@ -1,4 +1,5 @@
 #include "remote_widget.h"
+#include "search_dialog.h"
 #include "mount_dialog.h"
 #include "rclone_commands.h"
 #include "tool_dialog.h"
@@ -795,8 +796,45 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   mFilter->addAction(Theme::icon("search"), QLineEdit::LeadingPosition);
   mFilter->setFixedWidth(260);
   mFilter->setToolTip(tr("Show only items in the current folder whose name "
-                         "contains this text (Ctrl+F)"));
+                         "contains this text (Ctrl+F). Search looks in "
+                         "subfolders too."));
   hh->addWidget(mFilter, 0, Qt::AlignVCenter);
+
+  // Search: the current folder and everything inside it (the filter above
+  // only looks at what is already shown)
+  auto *search = new QToolButton;
+  search->setIcon(Theme::icon("search"));
+  search->setIconSize(QSize(18, 18));
+  search->setText(tr("Search"));
+  search->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  search->setToolTip(tr("Find files and folders by name in this folder and "
+                        "all its subfolders (Ctrl+Shift+F)"));
+  hh->addWidget(search, 0, Qt::AlignVCenter);
+  auto *searchKey = new QShortcut(QKeySequence(tr("Ctrl+Shift+F")), this);
+  auto openSearch = [this, model, remote, isLocal]() {
+    QModelIndex folder = ui.tree->currentIndex().siblingAtColumn(0);
+    if (folder.isValid() && !model->isFolder(folder)) {
+      folder = folder.parent();
+    }
+    if (!folder.isValid()) {
+      folder = model->index(0, 0, QModelIndex()); // the remote's top
+    }
+    if (!folder.isValid()) {
+      return;
+    }
+    const QPersistentModelIndex base(folder);
+    auto *dialog = new SearchDialog(remote, model->path(folder).path(), isLocal, this);
+    QObject::connect(dialog, &SearchDialog::openRequested, this,
+                     [this, model, base](const QString &relativePath) {
+                       if (base.isValid()) {
+                         revealPath(model, base,
+                                    relativePath.split('/', Qt::SkipEmptyParts));
+                       }
+                     });
+    dialog->show();
+  };
+  QObject::connect(search, &QToolButton::clicked, this, openSearch);
+  QObject::connect(searchKey, &QShortcut::activated, this, openSearch);
 
   auto *newTab = new QShortcut(QKeySequence::AddTab, this);
   QObject::connect(newTab, &QShortcut::activated, this,
@@ -902,6 +940,25 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   ui.buttonRefresh->setIconSize(QSize(18, 18));
   bar->addWidget(ui.buttonRefresh);
 
+  // Folder sizes in the Details view's Size column (saved, for every remote)
+  mFolderSizes = new QAction(tr("Show folder sizes"), this);
+  mFolderSizes->setCheckable(true);
+  mFolderSizes->setToolTip(
+      tr("Works out each folder's size in the background. On a cloud remote "
+         "this reads every file inside, which can take a while."));
+  QObject::connect(mFolderSizes, &QAction::toggled, this, [this, model](bool on) {
+    GetSettings()->setValue("Settings/showFolderSizes", on);
+    if (on) {
+      QHeaderView *hdr = ui.tree->header();
+      hdr->setSectionHidden(1, false); // the sizes go there
+      // room for "999.9 MB", which folders reach more often than files
+      const int wide = ui.tree->fontMetrics().horizontalAdvance(QStringLiteral("999.9 MB")) + 32;
+      if (hdr->sectionSize(1) < wide) {
+        hdr->resizeSection(1, wide);
+      }
+    }
+    model->setShowFolderSizes(on);
+  });
   auto *more = new QToolButton;
   more->setIcon(Theme::icon("more"));
   more->setIconSize(QSize(18, 18));
@@ -911,6 +968,7 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   moreMenu->addAction(ui.stream);
   moreMenu->addSeparator();
   moreMenu->addAction(ui.getSize);
+  moreMenu->addAction(mFolderSizes);
   moreMenu->addAction(ui.getTree);
   moreMenu->addAction(ui.export_);
   moreMenu->addSeparator();
@@ -1173,9 +1231,12 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
                            GetSettings()->setValue("Settings/hiddenColumns", hiddenNow);
                          });
                        }
+                       menu.addSeparator();
+                       menu.addAction(mFolderSizes);
                        menu.exec(hdr->mapToGlobal(pos));
                      });
   }
+  mFolderSizes->setChecked(GetSettings()->value("Settings/showFolderSizes", false).toBool());
   ui.tree->setAnimated(true);
   ui.tree->setIconSize(QSize(22, 22));
   ui.tree->setFrameShape(QFrame::NoFrame);
@@ -1480,4 +1541,65 @@ void RemoteWidget::applyFilter(ItemModel *model) {
     ui.tree->expand(folder);
   }
   ui.tree->setUpdatesEnabled(true);
+}
+
+// Opens the folders on the way to a search result, one at a time (each may
+// need listing first, which happens in the background), then selects it.
+void RemoteWidget::revealPath(ItemModel *model, const QPersistentModelIndex &at,
+                              QStringList rest) {
+  if (!at.isValid()) {
+    return; // the folder went away meanwhile
+  }
+  if (rest.isEmpty()) {
+    emit showRequested(); // this tab, if another one is in front
+    const QModelIndex target = at;
+    if (mGrid->isVisible() && target.parent().isValid()) {
+      // the folder that holds it, with it selected (a folder too)
+      const QModelIndex folder = target.parent();
+      ui.tree->setCurrentIndex(folder);
+      showFolderInGrid(folder, model);
+      mGrid->selectionModel()->setCurrentIndex(target, QItemSelectionModel::ClearAndSelect);
+      mGrid->scrollTo(target);
+    } else {
+      ui.tree->setCurrentIndex(target);
+      ui.tree->scrollTo(target);
+    }
+    window()->activateWindow();
+    return;
+  }
+  if (model->needsLoad(at) || model->isFolderLoading(at)) {
+    // listed in the background: carry on once the listing has arrived
+    ui.tree->expand(at);
+    model->rowCount(at); // starts the listing if it has not started yet
+    auto connections = std::make_shared<QList<QMetaObject::Connection>>();
+    auto check = [this, model, at, rest, connections]() {
+      if (connections->isEmpty()) {
+        return; // done already
+      }
+      if (at.isValid() && model->isFolderLoading(at)) {
+        return; // another folder was listed; this one is still on its way
+      }
+      for (const auto &c : std::as_const(*connections)) {
+        QObject::disconnect(c);
+      }
+      connections->clear();
+      revealPath(model, at, rest); // listed, or failed: then its folder shows
+    };
+    // the signals come just before the listing is put in place
+    auto later = [this, check]() { QTimer::singleShot(0, this, check); };
+    *connections << QObject::connect(model, &ItemModel::loadSucceeded, this, later);
+    *connections << QObject::connect(model, &ItemModel::loadFailed, this, later);
+    return;
+  }
+  ui.tree->expand(at);
+  const QString name = rest.takeFirst();
+  for (int r = 0; r < model->rowCount(at); ++r) {
+    const QModelIndex child = model->index(r, 0, at);
+    if (model->data(child, Qt::DisplayRole).toString() == name) {
+      revealPath(model, child, rest);
+      return;
+    }
+  }
+  // not there any more (moved or deleted since the search): show its folder
+  revealPath(model, at, {});
 }

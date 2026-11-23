@@ -41,6 +41,10 @@ struct Item {
   QDir path;
   QString modified;
   quint64 size = 0;
+  // Folders: rclone lsjson gives no size, so it is worked out on request
+  // (`rclone size`) and shown in the Size column once known.
+  enum SizeState { SizeUnknown, SizeQueued, SizeKnown };
+  SizeState sizeState = SizeUnknown;
 
   QVector<Item *> childs;
 
@@ -66,8 +70,16 @@ public:
   // would start listing it, so code that only wants to look at what is
   // already there (such as the filter) must check this first.
   bool needsLoad(const QModelIndex &index) const;
+  // True while the folder at `index` is being listed.
+  bool isFolderLoading(const QModelIndex &index) const;
 
   QModelIndex addRoot(const QString &name, const QString &path);
+
+  // Folder sizes in the Size column. With it on, the folders of every folder
+  // that is listed get their size worked out in the background, a couple at
+  // a time; turning it off stops what has not started yet.
+  void setShowFolderSizes(bool on);
+  bool showFolderSizes() const { return mShowFolderSizes; }
 
   QModelIndex index(int row, int column,
                     const QModelIndex &parent) const override;
@@ -106,6 +118,14 @@ private:
   QList<std::function<void()>> mPendingLoads;
   void startOrQueueLoad(const std::function<void()> &start);
   void loadFinished();
+
+  bool mShowFolderSizes = false;
+  static constexpr int kMaxParallelSizes = 2;
+  int mActiveSizes = 0;
+  QList<QPersistentModelIndex> mPendingSizes;
+  QList<QProcess *> mSizeRuns;
+  void queueFolderSizes(const QModelIndex &parent, Item *folder);
+  void startNextSize();
 
   QString mRemote;
 

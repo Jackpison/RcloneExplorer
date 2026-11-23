@@ -45,4 +45,16 @@ QStringList cacheModes();
 // sets itself, so existing setups behave as before.
 QStringList mountArgs(const MountOptions &o, const QString &globalOptions);
 
+// A file name part as an rclone filter pattern that matches it literally
+// (*, ?, [, ], {, } and \ have meanings there).
+QString globEscape(const QString &text);
+
+// The speed limit from Preferences, in rclone's --bwlimit form: "10M",
+// "off", "10M:2M" (upload:download) or a timetable such as
+// "08:00,2M 19:00,off" or "Mon-08:00,1M Sat-00:00,off". Empty means none.
+bool validBandwidth(const QString &limit);
+// `args` with --bwlimit added, unless the limit is empty or invalid, or the
+// arguments already have their own (a saved task's limit wins).
+QStringList withBandwidth(const QStringList &args, const QString &limit);
+
 } // namespace RcloneCommands

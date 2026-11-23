@@ -10,6 +10,29 @@ class TestCommands : public QObject {
   Q_OBJECT
 
 private slots:
+  void globEscaping() {
+    QCOMPARE(RcloneCommands::globEscape("beach"), QString("beach"));
+    QCOMPARE(RcloneCommands::globEscape("a[b]*?{c}\\"),
+             QString("a\\[b\\]\\*\\?\\{c\\}\\\\"));
+  }
+  void bandwidthLimits() {
+    for (const char *ok : {"", "10M", "512k", "1.5M", "off", "10M:2M", "08:00,2M 19:00,off",
+                           "Mon-08:00,1M Sat-00:00,off", "  4M  ", "1MiB", "1Mi"}) {
+      QVERIFY2(RcloneCommands::validBandwidth(ok), ok);
+    }
+    for (const char *bad : {"fast", "2MB", "10 M", "25:00,1M", "08:00 2M", "10M; rm -rf", "-1M", "08:00,2M off"}) {
+      QVERIFY2(!RcloneCommands::validBandwidth(bad), bad);
+    }
+    const QStringList copy{"copy", "a:", "b:"};
+    QCOMPARE(RcloneCommands::withBandwidth(copy, " 4M "), QStringList({"copy", "a:", "b:", "--bwlimit", "4M"}));
+    QCOMPARE(RcloneCommands::withBandwidth(copy, ""), copy);
+    QCOMPARE(RcloneCommands::withBandwidth(copy, "fast"), copy);
+    const QStringList own{"copy", "a:", "b:", "--bwlimit", "1M"};
+    QCOMPARE(RcloneCommands::withBandwidth(own, "4M"), own); // the task's own limit wins
+    const QStringList ownEq{"copy", "--bwlimit=1M"};
+    QCOMPARE(RcloneCommands::withBandwidth(ownEq, "4M"), ownEq);
+  }
+
   void shellQuoting() {
     QCOMPARE(shellQuote("--fast-list"), QString("--fast-list"));
     QCOMPARE(shellCommand({"rclone", "copy", "gdrive:Photos"}), QString("rclone copy gdrive:Photos"));

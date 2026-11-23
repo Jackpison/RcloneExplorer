@@ -52,10 +52,9 @@ struct ListEntry {
   quint64 size = 0;
   QString modified; // "YYYY-MM-DD HH:MM:SS"
   QString name;
+  QString path; // lsjson only: relative to the folder listed ("a/b.txt")
 };
 
-// Parse one line of `rclone lsd` output. Names keep leading/trailing spaces.
-ListEntry parseLsdLine(const QString &line);
 // Parse one line of `rclone lsl` output. Names keep leading/trailing spaces.
 ListEntry parseLslLine(const QString &line);
 
@@ -64,6 +63,11 @@ ListEntry parseLslLine(const QString &line);
 // one rclone call instead of two (lsd + lsl). Times are converted to local
 // time and formatted "YYYY-MM-DD HH:MM:SS" like lsl output.
 QList<ListEntry> parseLsJson(const QByteArray &json, bool *ok = nullptr);
+
+// One line of `rclone lsjson` output as it streams in: rclone writes one
+// entry per line ("{...}," between "[" and "]"), so results can be shown
+// before the listing ends. Anything else comes back with valid == false.
+ListEntry parseLsJsonLine(const QByteArray &line);
 
 // Strip only the line terminator (\n or \r\n), never other whitespace,
 // because file names may legitimately start or end with spaces.

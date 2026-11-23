@@ -4,6 +4,7 @@
 
 #include "main_window.h"
 #include "mirror_page.h"
+#include "notifier.h"
 #include "remote_widget.h"
 #include "theme.h"
 #include "theme_reveal.h"
@@ -381,6 +382,12 @@ void MainWindow::buildShell() {
              const QStringList &args) { return addTransfer(message, source, dest, args); },
       [this]() { showPage(TransfersPage); });
   mPages->addWidget(mMirror);
+  QObject::connect(mMirror, &MirrorPage::runFinished, this,
+                   [this](const QString &title, const QString &text, bool problem) {
+                     if (mNotifier && mNotifyFinishedTransfers) {
+                       mNotifier->notify(title, text, problem);
+                     }
+                   });
   cl->addWidget(mPages);
 
   ui.tabs->setAttribute(Qt::WA_StyledBackground);
@@ -651,6 +658,10 @@ void MainWindow::openRemote(const QString &name, const QString &type,
                      [this, remote]() { closeRemoteWidget(remote); });
     QObject::connect(remote, &RemoteWidget::newTabRequested, this,
                      [this, name, type]() { openRemote(name, type, true); });
+    QObject::connect(remote, &RemoteWidget::showRequested, this, [this, remote]() {
+      ui.tabs->setCurrentWidget(remote);
+      showPage(BrowserPage);
+    });
     index = ui.tabs->addTab(remote, Theme::remoteIcon(type), name);
     ui.tabs->setTabToolTip(index, QString("%1 · %2").arg(name, type));
 

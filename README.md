@@ -17,9 +17,11 @@ Rclone Explorer (formerly Rclone Browser) gives rclone a full graphical interfac
 - **Modern design** in black and gold or warm light, with a one-click **light / dark** switch next to the app name: the new theme spreads in a circle from the button
 - **All your clouds in one place**: Google Drive, OneDrive, Dropbox, pCloud, S3, SFTP, encrypted remotes and every other rclone storage type, using your existing rclone configuration. Logos for 34 popular services are included; you can [add your own](docs/remote-icons.md).
 - **File Explorer–style tabs**: open several remotes, or the same remote several times (Ctrl+T)
-- **Icons and Details views**: extra large to small icons (Ctrl + mouse wheel), or a sortable list with name, size, modified date, type, extension and path
+- **Icons and Details views**: extra large to small icons (Ctrl + mouse wheel), or a sortable list with name, size, modified date, type, extension and path. **Folder sizes** can show in the Size column too (⋯ → *Show folder sizes*)
+- **Search** a remote by name, subfolders included (Ctrl+Shift+F), and jump to any file or folder found
 - Upload, download, create folders, rename, move and delete; drag and drop files from your file manager to upload
-- **Transfers you can pause and resume**, with live progress, speed and time left
+- **Transfers you can pause and resume**, with live progress, speed and time left, and an optional **speed limit** for all of them (`10M`, or a timetable such as `08:00,2M 19:00,off`)
+- **Desktop notifications** when transfers and mirrors finish and when scheduled tasks start (can be turned off in Preferences)
 - A **sound** when a transfer finishes or fails, and the computer is **kept awake** while transfers run (both can be turned off in Preferences)
 - Saved **tasks**: store a transfer once, run it again with one click (or as a dry run), or **schedule** it to run by itself (every N minutes or hours, daily, or on chosen weekdays)
 - **Mirror**: keep a folder, or any sub-folder, identical on other remotes, each copy in a folder you choose (`Google Drive:Gallery/Trips` → `pCloud:Backups/Trips` and `Koofr:Photos`). See the size, file count and a Matches / Differs badge for every copy, **check** exactly what would be added, updated or removed before anything changes, then **sync** with one click or on a **schedule**. A folder on this PC works as a source or as a copy too. Files the source removed or replaced are kept in a `_SyncTrash` folder on the copy (or deleted, or left alone), with a **Clean up trash** tool and a **history** of every run. Skip files by pattern (`*.tmp`, `Thumbs.db`…); Google Docs are skipped unless you choose to copy them as Office files
@@ -125,6 +127,7 @@ Rclone Explorer is the new name of Rclone Browser, so your settings and saved ta
 |---|---|
 | Ctrl+T / Ctrl+W | New tab / close tab (or middle-click the tab) |
 | Ctrl+F | Filter the current folder |
+| Ctrl+Shift+F | Search this folder and its subfolders |
 | Ctrl+Shift+1 / Ctrl+Shift+2 | Icons view / Details view |
 | Ctrl + mouse wheel | Bigger / smaller icons |
 | Enter, double-click | Open folder |

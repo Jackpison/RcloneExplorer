@@ -211,6 +211,10 @@ bool ItemModel::needsLoad(const QModelIndex &index) const {
   return item->isFolder && item->state == Item::Unknown;
 }
 
+bool ItemModel::isFolderLoading(const QModelIndex &index) const {
+  return index.isValid() && get(index)->isLoading();
+}
+
 void ItemModel::startOrQueueLoad(const std::function<void()> &start) {
   if (mActiveLoads < kMaxParallelLoads) {
     ++mActiveLoads;
@@ -227,6 +231,129 @@ void ItemModel::loadFinished() {
   while (mActiveLoads < kMaxParallelLoads && !mPendingLoads.isEmpty()) {
     ++mActiveLoads;
     mPendingLoads.takeFirst()();
+  }
+}
+
+void ItemModel::setShowFolderSizes(bool on) {
+  if (mShowFolderSizes == on) {
+    return;
+  }
+  mShowFolderSizes = on;
+  if (on) {
+    // the folders already listed; the ones listed later are queued as they come
+    std::function<void(const QModelIndex &, Item *)> walk =
+        [&](const QModelIndex &index, Item *folder) {
+          if (folder->state != Item::Ready) {
+            return;
+          }
+          queueFolderSizes(index, folder);
+          for (int i = 0; i < folder->childs.count(); ++i) {
+            Item *child = folder->childs[i];
+            if (child->isFolder && child->state == Item::Ready) {
+              walk(createIndex(i, 0, child), child);
+            }
+          }
+        };
+    for (int i = 0; i < mRoot->childs.count(); ++i) {
+      walk(createIndex(i, 0, mRoot->childs[i]), mRoot->childs[i]);
+    }
+    return;
+  }
+  // Off: stop the runs, forget what is waiting, and clear the column (the
+  // sizes also go out of date while they are not shown).
+  mPendingSizes.clear();
+  const QList<QProcess *> runs = mSizeRuns;
+  mSizeRuns.clear();
+  mActiveSizes = 0;
+  for (QProcess *p : runs) {
+    p->disconnect(this);
+    p->kill();
+    p->deleteLater();
+  }
+  std::function<void(Item *)> clear = [&](Item *folder) {
+    for (int i = 0; i < folder->childs.count(); ++i) {
+      Item *child = folder->childs[i];
+      if (child->isFolder && child->sizeState != Item::SizeUnknown) {
+        child->sizeState = Item::SizeUnknown;
+        child->size = 0;
+        const QModelIndex cell = createIndex(i, 1, child);
+        emit dataChanged(cell, cell, QVector<int>{Qt::DisplayRole});
+      }
+      if (child->isFolder) {
+        clear(child);
+      }
+    }
+  };
+  clear(mRoot);
+}
+
+void ItemModel::queueFolderSizes(const QModelIndex &parent, Item *folder) {
+  if (!mShowFolderSizes) {
+    return;
+  }
+  for (int i = 0; i < folder->childs.count(); ++i) {
+    Item *child = folder->childs[i];
+    if (child->isFolder && child->state != Item::Special &&
+        child->sizeState == Item::SizeUnknown) {
+      child->sizeState = Item::SizeQueued;
+      const QModelIndex cell = index(i, 1, parent);
+      emit dataChanged(cell, cell, QVector<int>{Qt::DisplayRole});
+      mPendingSizes.append(QPersistentModelIndex(index(i, 0, parent)));
+    }
+  }
+  startNextSize();
+}
+
+void ItemModel::startNextSize() {
+  while (mActiveSizes < kMaxParallelSizes && !mPendingSizes.isEmpty()) {
+    const QPersistentModelIndex target = mPendingSizes.takeFirst();
+    if (!target.isValid()) {
+      continue; // the folder went away (deleted, or its parent reloaded)
+    }
+    Item *item = get(target);
+    if (!item->isFolder || item->sizeState != Item::SizeQueued) {
+      continue;
+    }
+    auto *p = new QProcess(this);
+    mSizeRuns.append(p);
+    ++mActiveSizes;
+    auto done = [this, p, target]() {
+      if (!mSizeRuns.removeOne(p)) {
+        return; // stopped already
+      }
+      --mActiveSizes;
+      p->deleteLater();
+      if (target.isValid()) {
+        Item *folder = get(target);
+        bool ok = p->exitStatus() == QProcess::NormalExit && p->exitCode() == 0;
+        // {"count":12,"bytes":3456,"sizeless":0}
+        const QJsonObject o = QJsonDocument::fromJson(p->readAllStandardOutput()).object();
+        const qint64 bytes = o.value(QLatin1String("bytes")).toInteger(-1);
+        ok = ok && bytes >= 0;
+        folder->size = ok ? quint64(bytes) : 0;
+        folder->sizeState = ok ? Item::SizeKnown : Item::SizeUnknown;
+        const QModelIndex cell = target.sibling(target.row(), 1);
+        emit dataChanged(cell, cell, QVector<int>{Qt::DisplayRole});
+      }
+      startNextSize();
+    };
+    QObject::connect(p,
+                     static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(
+                         &QProcess::finished),
+                     this, done);
+    QObject::connect(p, &QProcess::errorOccurred, this,
+                     [done](QProcess::ProcessError e) {
+                       if (e == QProcess::FailedToStart) {
+                         done();
+                       }
+                     });
+    UseRclonePassword(p);
+    p->start(GetRclone(),
+             QStringList() << "size" << "--json" << GetRcloneConf()
+                           << GetDriveSharedWithMe() << GetShowHidden()
+                           << GetDefaultRcloneOptionsList()
+                           << mRemote + ":" + item->path.path(),
+             QIODevice::ReadOnly);
   }
 }
 
@@ -340,8 +467,17 @@ QVariant ItemModel::data(const QModelIndex &index, int role) const {
     case 0:
       return item->name;
     case 1:
-      if (item->isFolder || item->state == Item::Special) {
+      if (item->state == Item::Special) {
         return QString();
+      } else if (item->isFolder) {
+        switch (item->sizeState) {
+        case Item::SizeKnown:
+          return getNiceSize(item->size);
+        case Item::SizeQueued:
+          return QStringLiteral("\u2026"); // being worked out
+        default:
+          return QString();
+        }
       } else {
         return getNiceSize(item->size);
       }
@@ -609,13 +745,23 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
         item = nullptr;
       } else {
         Item *old = parent->childs[it.value()];
-        if (old->isFolder != item->isFolder ||
-            old->modified != item->modified || old->size != item->size) {
-          old->state = Item::Unknown;
+        // A folder's size is worked out separately (lsjson has none): it is
+        // worked out again, as what is inside may have changed.
+        const bool staleSize = old->isFolder && old->sizeState == Item::SizeKnown;
+        if (staleSize || old->isFolder != item->isFolder ||
+            old->modified != item->modified ||
+            (!old->isFolder && old->size != item->size)) {
+          if (old->isFolder != item->isFolder || old->modified != item->modified ||
+              (!old->isFolder && old->size != item->size)) {
+            old->state = Item::Unknown;
+            modified = true;
+          }
           old->isFolder = item->isFolder;
           old->modified = item->modified;
           old->size = item->size;
-          modified = true;
+          if (staleSize || !old->isFolder) {
+            old->sizeState = Item::SizeUnknown;
+          }
           emit dataChanged(createIndex(it.value(), 0, old),
                            createIndex(it.value(), columnCount(QModelIndex()) - 1, old),
                            QVector<int>{Qt::DisplayRole});
@@ -641,6 +787,7 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
     if (modified) {
       sort(parentIndex, parent);
     }
+    queueFolderSizes(parentIndex, parent);
   };
 
   QObject::connect(ls,

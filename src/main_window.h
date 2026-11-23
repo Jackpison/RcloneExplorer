@@ -36,6 +36,7 @@ private:
   Ui::MainWindow ui;
 
   QSystemTrayIcon mSystemTray;
+  class Notifier *mNotifier = nullptr; // desktop notifications
   JobWidget *mLastFinished = nullptr;
 
   bool mAlwaysShowInTray;

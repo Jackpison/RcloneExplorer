@@ -23,6 +23,8 @@ signals:
   void addStream(const QString &remote, const QString &stream);
   void closeRequested();
   void newTabRequested();
+  // wants to be the tab in front (a search result is shown in it)
+  void showRequested();
 
 private:
   Ui::RemoteWidget ui;
@@ -38,6 +40,7 @@ private:
   class QListView *mGrid = nullptr;
   QToolButton *mViewIcons = nullptr;
   QToolButton *mViewDetails = nullptr;
+  QAction *mFolderSizes = nullptr; // "Show folder sizes" (Details view)
   bool mSyncingFromGrid = false;
   QList<QToolButton *> mPrimaryButtons;
   bool mCompactBar = false;
@@ -53,4 +56,6 @@ private:
                      bool isLocal);
   void updateBreadcrumbs(class ItemModel *model, const QString &remote);
   void applyFilter(class ItemModel *model);
+  void revealPath(class ItemModel *model, const QPersistentModelIndex &at,
+                  QStringList rest);
 };

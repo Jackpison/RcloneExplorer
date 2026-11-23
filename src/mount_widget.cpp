@@ -87,8 +87,6 @@ void MountWidget::cancel(bool wait) {
     return;
   }
 
-  QString cmd;
-
 #if defined(Q_OS_MACOS) || defined(Q_OS_FREEBSD)
   QProcess::startDetached("umount", QStringList() << ui.folder->text());
 #else

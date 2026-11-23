@@ -20,6 +20,7 @@ public:
   QString getDefaultDownloadOptions() const;
   QString getDefaultUploadOptions() const;
   QString getDefaultRcloneOptions() const;
+  QString getBandwidthLimit() const; // rclone --bwlimit, "" for none
 
   bool getCheckAppUpdates() const;
   bool getCheckRcloneUpdates() const;
@@ -44,4 +45,5 @@ public:
 
 private:
   Ui::PreferencesDialog ui;
+  QLineEdit *mBandwidth = nullptr;
 };

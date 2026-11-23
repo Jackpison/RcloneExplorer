@@ -1,4 +1,6 @@
 #include "rclone_commands.h"
+
+#include <QRegularExpression>
 #include "command_args.h"
 
 namespace RcloneCommands {
@@ -82,6 +84,54 @@ QStringList mountArgs(const MountOptions &o, const QString &globalOptions) {
   l << splitArguments(o.extra);
   l << global;
   return l;
+}
+
+QString globEscape(const QString &text) {
+  QString out;
+  out.reserve(text.size() * 2);
+  for (const QChar c : text) {
+    if (QStringLiteral("*?[]{}\\").contains(c)) {
+      out += QLatin1Char('\\');
+    }
+    out += c;
+  }
+  return out;
+}
+
+bool validBandwidth(const QString &limit) {
+  const QString l = limit.trimmed();
+  if (l.isEmpty()) {
+    return true;
+  }
+  static const QString rate = QStringLiteral(R"((?:off|\d+(?:\.\d+)?(?:[BKMGTP](?:iB?)?)?))");
+  static const QRegularExpression single(
+      QStringLiteral("^%1(?::%1)?$").arg(rate), QRegularExpression::CaseInsensitiveOption);
+  static const QRegularExpression slot(
+      QStringLiteral(R"(^(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)-)?(?:[01]?\d|2[0-3]):[0-5]\d,%1(?::%1)?$)").arg(rate),
+      QRegularExpression::CaseInsensitiveOption);
+  const QStringList parts = l.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+  if (parts.size() == 1 && single.match(parts.first()).hasMatch()) {
+    return true;
+  }
+  for (const QString &p : parts) {
+    if (!slot.match(p).hasMatch()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+QStringList withBandwidth(const QStringList &args, const QString &limit) {
+  const QString l = limit.trimmed();
+  if (l.isEmpty() || !validBandwidth(l)) {
+    return args;
+  }
+  for (const QString &a : args) {
+    if (a == "--bwlimit" || a.startsWith("--bwlimit=")) {
+      return args;
+    }
+  }
+  return QStringList(args) << "--bwlimit" << l;
 }
 
 } // namespace RcloneCommands

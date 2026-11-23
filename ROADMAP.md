@@ -41,6 +41,13 @@ All done; they ship together once the version is bumped.
 - [x] **Deleting a saved task asks nothing** (every other delete asks first).
 - [x] **After deleting a file, the parent folder is selected** instead of the next file.
 
+### New features for 5.4.4
+
+- [x] **Search in a remote**: find files and folders by name in the current folder and everything below it; open the folder of a result.
+- [x] **Desktop notifications**, on or off in Preferences: transfers that finish or fail, mirror checks and syncs, scheduled tasks that start. They work without the tray icon (today they only show while it is visible).
+- [x] **Bandwidth limit in Preferences**: one speed limit for every transfer (for example `10M`), or a timetable such as `08:00,2M 19:00,off`.
+- [x] **Folder sizes in Details view**: worked out in the background when turned on; it shows in the Size column.
+
 ### Also done for 5.4.4
 
 - [x] **The installer no longer asks "for me or for all users"**: it installs for your user. `/ALLUSERS` on the command line still installs for everyone, and an earlier all-users install keeps updating there.

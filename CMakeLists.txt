@@ -19,14 +19,14 @@ set(RB_QT_MAJOR "" CACHE STRING "Force Qt major version (5 or 6); empty = auto")
 if(RB_QT_MAJOR)
   find_package(Qt${RB_QT_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Network Svg)
   if(NOT WIN32)
-    find_package(Qt${RB_QT_MAJOR} REQUIRED COMPONENTS DBus) # power_inhibitor: the portal
+    find_package(Qt${RB_QT_MAJOR} REQUIRED COMPONENTS DBus) # power_inhibitor, notifier: the portal and notifications
   endif()
   set(QT_VERSION_MAJOR ${RB_QT_MAJOR})
 else()
   find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
   find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Network Svg)
   if(NOT WIN32)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS DBus) # power_inhibitor: the portal
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS DBus) # power_inhibitor, notifier: the portal and notifications
   endif()
 endif()
 if(WIN32 AND QT_VERSION_MAJOR LESS 6)

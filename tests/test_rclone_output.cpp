@@ -120,18 +120,6 @@ private slots:
   }
 
   // ---- listings (captured from rclone v1.75.1) ----
-  void lsd() {
-    auto e = parseLsdLine("        4096 2026-10-08 15:13:54        -1 a dir\n");
-    QVERIFY(e.valid);
-    QVERIFY(e.isDir);
-    QCOMPARE(e.name, QString("a dir"));
-    QCOMPARE(e.modified, QString("2026-10-08 15:13:54"));
-  }
-  void lsdBucket() {
-    auto e = parseLsdLine("          -1 2000-01-01 00:00:00        -1 bucket");
-    QVERIFY(e.valid);
-    QCOMPARE(e.name, QString("bucket"));
-  }
   void lslSpaces() {
     // Leading and trailing spaces in names must survive (old code trimmed them
     // and then failed to open/download such files).
@@ -153,7 +141,7 @@ private slots:
   }
   void lslGarbage() {
     QVERIFY(!parseLslLine("2026/10/08 NOTICE: something").valid);
-    QVERIFY(!parseLsdLine("").valid);
+    QVERIFY(!parseLslLine("").valid);
   }
 
   // ---- lsjson (captured from rclone v1.75.1)
@@ -189,6 +177,28 @@ private slots:
   }
 
   // ---- file_names.h must behave exactly like QFileInfo::suffix()
+  void lsjsonStreamedLines() {
+    auto e = parseLsJsonLine(
+        R"({"Path":"Photos/holiday/IMG_beach.jpg","Name":"IMG_beach.jpg","Size":1234,)"
+        R"("ModTime":"2026-11-23T03:41:23.462743373Z","IsDir":false},)");
+    QVERIFY(e.valid);
+    QCOMPARE(e.path, QString("Photos/holiday/IMG_beach.jpg"));
+    QCOMPARE(e.name, QString("IMG_beach.jpg"));
+    QCOMPARE(e.size, quint64(1234));
+    QVERIFY(!e.isDir);
+    QVERIFY(!e.modified.isEmpty());
+    // the last entry has no comma; folders have no size
+    e = parseLsJsonLine(R"(  {"Path":"Docs","Name":"Docs","Size":-1,"IsDir":true}  )");
+    QVERIFY(e.valid);
+    QVERIFY(e.isDir);
+    QCOMPARE(e.size, quint64(0));
+    for (const char *bad : {"[", "]", "", "2026/11/23 NOTICE: x", "{broken",
+                            R"({"Path":"../etc/passwd","Name":"passwd"})",
+                            R"({"Path":"/abs","Name":"abs"})",
+                            R"({"Path":"","Name":"x"})", R"({"Path":"a"})"}) {
+      QVERIFY2(!parseLsJsonLine(bad).valid, bad);
+    }
+  }
   void fileExtensionMatchesQFileInfo() {
     const QStringList names = {"report.pdf", "archive.tar.gz", ".bashrc", "name.", "name", "a.b.c.d",
                                "UPPER.JPG", "with space.txt", " lead.md", "trail.md ", "x.y/z", "dir.d/file",

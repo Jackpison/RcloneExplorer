@@ -131,21 +131,6 @@ QString chomp(const QString &line) {
   return s;
 }
 
-ListEntry parseLsdLine(const QString &rawLine) {
-  // "        4096 2026-10-08 15:13:54        -1 a dir"
-  static const QRegularExpression rx(
-      R"(^\s*-?\d+ (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+-?\d+ (.+)$)");
-  ListEntry e;
-  auto m = rx.match(chomp(rawLine));
-  if (m.hasMatch()) {
-    e.valid = true;
-    e.isDir = true;
-    e.modified = m.captured(1);
-    e.name = m.captured(2);
-  }
-  return e;
-}
-
 ListEntry parseLslLine(const QString &rawLine) {
   // "314572800 2026-10-08 15:13:54.287248807 big.bin"
   // "        0 2026-10-08 15:13:54.291248807  name with leading space"
@@ -162,6 +147,30 @@ ListEntry parseLslLine(const QString &rawLine) {
   return e;
 }
 
+namespace {
+ListEntry entryFromJson(const QJsonObject &o) {
+  static const QRegularExpression fraction(R"(\.\d+)");
+  ListEntry e;
+  e.name = o.value(QLatin1String("Name")).toString();
+  if (e.name.isEmpty()) {
+    return e;
+  }
+  e.valid = true;
+  e.path = o.value(QLatin1String("Path")).toString();
+  e.isDir = o.value(QLatin1String("IsDir")).toBool();
+  const double size = o.value(QLatin1String("Size")).toDouble();
+  e.size = (e.isDir || size < 0) ? 0 : quint64(size);
+  // "2026-10-08T18:18:39.142115738Z" -> local "2026-10-08 20:18:39"
+  QString t = o.value(QLatin1String("ModTime")).toString();
+  t.remove(fraction);
+  const QDateTime dt = QDateTime::fromString(t, Qt::ISODate);
+  if (dt.isValid()) {
+    e.modified = dt.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+  }
+  return e;
+}
+} // namespace
+
 QList<ListEntry> parseLsJson(const QByteArray &json, bool *ok) {
   QList<ListEntry> out;
   QJsonParseError err{};
@@ -172,30 +181,35 @@ QList<ListEntry> parseLsJson(const QByteArray &json, bool *ok) {
   if (!doc.isArray()) {
     return out;
   }
-  static const QRegularExpression fraction(R"(\.\d+)");
   const QJsonArray arr = doc.array();
   out.reserve(arr.size());
   for (const QJsonValue &v : arr) {
-    const QJsonObject o = v.toObject();
-    ListEntry e;
-    e.name = o.value(QLatin1String("Name")).toString();
-    if (e.name.isEmpty()) {
-      continue;
+    const ListEntry e = entryFromJson(v.toObject());
+    if (e.valid) {
+      out.append(e);
     }
-    e.valid = true;
-    e.isDir = o.value(QLatin1String("IsDir")).toBool();
-    const double size = o.value(QLatin1String("Size")).toDouble();
-    e.size = (e.isDir || size < 0) ? 0 : quint64(size);
-    // "2026-10-08T18:18:39.142115738Z" -> local "2026-10-08 20:18:39"
-    QString t = o.value(QLatin1String("ModTime")).toString();
-    t.remove(fraction);
-    const QDateTime dt = QDateTime::fromString(t, Qt::ISODate);
-    if (dt.isValid()) {
-      e.modified = dt.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
-    }
-    out.append(e);
   }
   return out;
+}
+
+ListEntry parseLsJsonLine(const QByteArray &line) {
+  QByteArray l = line.trimmed();
+  if (l.endsWith(',')) {
+    l.chop(1);
+  }
+  if (!l.startsWith('{')) {
+    return ListEntry(); // "[", "]" or a stray message
+  }
+  const QJsonDocument doc = QJsonDocument::fromJson(l);
+  if (!doc.isObject()) {
+    return ListEntry();
+  }
+  ListEntry e = entryFromJson(doc.object());
+  if (e.path.isEmpty() || e.path.startsWith('/') ||
+      e.path.split('/').contains(QStringLiteral(".."))) {
+    e.valid = false; // not a path inside the folder searched
+  }
+  return e;
 }
 
 QStringList LineBuffer::append(const QString &chunk) {

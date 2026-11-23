@@ -31,6 +31,8 @@ set(SOURCES
   command_args.h elided_label.h
   sound_player.cpp sound_player.h
   power_inhibitor.cpp power_inhibitor.h
+  notifier.cpp notifier.h
+  search_dialog.cpp search_dialog.h
   rclone_commands.cpp rclone_commands.h
   mirror.cpp mirror.h
   mirror_tools.cpp mirror_tools.h

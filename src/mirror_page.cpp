@@ -495,6 +495,9 @@ void MirrorPage::startPair(int i) {
     JobWidget *job = mAddTransfer(tr("Mirror %1 → %2").arg(pair.source, pair.dest), pair.source,
                                   pair.dest, GetDefaultRcloneOptionsList() + args);
     pair.job = job;
+    if (job) {
+      job->setProperty("partOfMirror", true); // one notification for the run
+    }
     if (!job) {
       pairDone(i, -1, tr("The transfer could not be started."));
       return;
@@ -603,6 +606,14 @@ void MirrorPage::finishRun() {
   }
   MirrorStore::addHistory(e);
   updateBanner();
+  if (!mStopping) {
+    bool problem = false;
+    for (const Pair &p : std::as_const(mPairs)) {
+      problem = problem || p.status == "error";
+    }
+    emit runFinished(mSync ? tr("Mirror sync finished") : tr("Mirror check finished"),
+                     mBannerTitle->text(), problem);
+  }
   rebuild();
   QTimer::singleShot(0, this, [this]() { tick(); }); // a schedule may have waited for us
 }

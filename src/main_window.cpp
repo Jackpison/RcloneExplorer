@@ -5,12 +5,14 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
+#include "rclone_commands.h"
 #include "rclone_updater.h"
 #include "app_updater.h"
 #include "job_options.h"
 #include "job_widget.h"
 #include "list_of_job_options.h"
 #include "mount_widget.h"
+#include "notifier.h"
 #include "preferences_dialog.h"
 #include "remote_widget.h"
 #include "schedule_dialog.h"
@@ -64,6 +66,7 @@ MainWindow::MainWindow() {
     mKeepAwake = settings->value("Settings/keepAwake", true).toBool();
 
     mSystemTray.setVisible(mAlwaysShowInTray);
+    mNotifier = new Notifier(&mSystemTray, [this]() { return mAlwaysShowInTray; }, this);
 
     // during first run the lastUsed keys might not exist
     if (!(settings->contains("Settings/lastUsedSourceFolder"))) {
@@ -134,6 +137,7 @@ MainWindow::MainWindow() {
       settings->setValue("Settings/closeToTray", dialog.getCloseToTray());
       settings->setValue("Settings/notifyFinishedTransfers",
                          dialog.getNotifyFinishedTransfers());
+      settings->setValue("Settings/bandwidthLimit", dialog.getBandwidthLimit());
       settings->setValue("Settings/playSounds", dialog.getPlaySounds());
       settings->setValue("Settings/keepAwake", dialog.getKeepAwake());
 
@@ -947,8 +951,11 @@ void MainWindow::scheduleTick() {
                        [this, id]() { mScheduledRunning.remove(id); });
       QObject::connect(w, &QObject::destroyed, this,
                        [this, id]() { mScheduledRunning.remove(id); });
-      if (mSystemTray.isVisible()) {
-        mSystemTray.showMessage(tr("Scheduled task started"), jo->description);
+      if (mNotifyFinishedTransfers) {
+        mNotifier->notify(tr("Scheduled task started"),
+                          jo->description.isEmpty()
+                              ? jo->source + QString::fromUtf8(" \u2192 ") + jo->dest
+                              : jo->description);
       }
     }
   }
@@ -994,7 +1001,11 @@ JobWidget *MainWindow::addTransfer(const QString &message,
   QProcess *transfer = new QProcess(this);
   transfer->setProcessChannelMode(QProcess::MergedChannels);
 
-  auto widget = new JobWidget(transfer, message, args, source, dest);
+  // the speed limit from Preferences (a task's own --bwlimit wins); the
+  // card shows the command that runs
+  const QStringList runArgs = RcloneCommands::withBandwidth(
+      args, GetSettings()->value("Settings/bandwidthLimit").toString());
+  auto widget = new JobWidget(transfer, message, runArgs, source, dest);
 
   auto line = new QFrame();
   line->setFrameShape(QFrame::HLine);
@@ -1022,12 +1033,12 @@ JobWidget *MainWindow::addTransfer(const QString &message,
           SoundPlayer::play(success ? SoundPlayer::Finished
                                     : SoundPlayer::Failed);
         }
-        if (mNotifyFinishedTransfers) {
+        // a mirror says it once for the whole run (MirrorPage::runFinished)
+        if (mNotifyFinishedTransfers && !widget->property("partOfMirror").toBool()) {
           qApp->alert(this);
           mLastFinished = widget;
-          mSystemTray.showMessage(
-              success ? tr("Transfer finished") : tr("Transfer failed"), info,
-              success ? QSystemTrayIcon::Information : QSystemTrayIcon::Warning);
+          mNotifier->notify(success ? tr("Transfer finished") : tr("Transfer failed"), info,
+                            !success);
         }
 
         if (--mJobCount == 0) {
@@ -1059,7 +1070,7 @@ JobWidget *MainWindow::addTransfer(const QString &message,
   setJobsTabText(QString("Jobs (%1)").arg(++mJobCount));
 
   UseRclonePassword(transfer);
-  transfer->start(GetRclone(), GetRcloneConf() + args, QIODevice::ReadOnly);
+  transfer->start(GetRclone(), GetRcloneConf() + runArgs, QIODevice::ReadOnly);
   return widget;
 }
 
@@ -1134,11 +1145,6 @@ void MainWindow::addMount(const QString &remote, const QString &folder,
     args << "--drive-shared-with-me";
     args << "--read-only";
   };
-
-  //	 default mount is now more generic. all options can be passed via
-  // preferences mount field
-  //       args << "--vfs-cache-mode";
-  //       args << "writes";
 
   args.append(GetRcloneConf());
   args.append(mountOptions);
@@ -1493,9 +1499,10 @@ void MainWindow::updateRcloneStatus() {
       RcloneUpdater::compareVersions(mLatestRclone, mRcloneVersion) > 0;
   if (newer) {
     mRcloneStatus->setText(tr("rclone v%1 — <a href=\"update\">update to %2</a>")
-                               .arg(mRcloneVersion, mLatestRclone));
+                               .arg(mRcloneVersion.toHtmlEscaped(),
+                                    mLatestRclone.toHtmlEscaped()));
   } else {
-    mRcloneStatus->setText(tr("rclone v%1").arg(mRcloneVersion));
+    mRcloneStatus->setText(tr("rclone v%1").arg(mRcloneVersion.toHtmlEscaped()));
   }
   mRcloneStatus->setToolTip(QDir::toNativeSeparators(GetRclone()));
 }
@@ -1564,11 +1571,11 @@ void MainWindow::checkRcloneUpdate(bool interactive) {
         box.setIcon(QMessageBox::Information);
         box.setWindowTitle(tr("rclone update available"));
         box.setText(tr("<b>rclone %1 is available.</b><br>You have v%2.")
-                        .arg(latest, mRcloneVersion));
+                        .arg(latest.toHtmlEscaped(), mRcloneVersion.toHtmlEscaped()));
         QString info = tr("It will be downloaded from rclone.org, its "
                           "checksum verified, and installed to:<br>%1")
                            .arg(QDir::toNativeSeparators(
-                               RcloneUpdater::managedPath()));
+                               RcloneUpdater::managedPath()).toHtmlEscaped());
         if (QDir::cleanPath(GetRclone()) !=
             QDir::cleanPath(RcloneUpdater::managedPath())) {
           const bool bundled = !RcloneUpdater::bundledPath().isEmpty() &&
@@ -1580,7 +1587,7 @@ void MainWindow::checkRcloneUpdate(bool interactive) {
                       : tr("<br><br>Rclone Explorer will switch from your current "
                            "rclone (%1) to this copy. Your remotes and settings are "
                            "not affected.")
-                            .arg(QDir::toNativeSeparators(GetRclone()));
+                            .arg(QDir::toNativeSeparators(GetRclone()).toHtmlEscaped());
         }
         info += tr("<br><br><a href=\"https://rclone.org/changelog/\">What's "
                    "new in rclone</a>");

@@ -2,6 +2,12 @@
 
 ## [5.4.4] - unreleased
 
+### Added
+-   **Search in a remote**: the *Search* button next to the filter (Ctrl+Shift+F) finds files and folders by name in the current folder and all its subfolders. Matches show as they are found; *Show in folder* opens the folder that holds one, with it selected
+-   **Folder sizes in the Details view**: turn on ⋯ → *Show folder sizes* (or right-click the column headers) and each folder's size is worked out in the background and shown in the Size column. On a cloud remote this reads every file inside, so it can take a while
+-   **Speed limit** in Preferences: one limit for every transfer, mirrors and scheduled tasks included, such as `10M`, or a timetable such as `08:00,2M 19:00,off`. A saved task with its own `--bwlimit` keeps it
+-   **Desktop notifications** on Linux through the desktop's notification service, so they also show without the tray icon (on Windows the tray icon appears for as long as the message). Mirror checks and syncs now say when they finish too, once per run. The Preferences option turns them all on or off
+
 ### Changed
 -   **The installer no longer asks "for me or for all users"**: it installs for your user (no administrator rights). To install for everyone, run the setup with `/ALLUSERS`. A copy installed for all users with 5.4.3 keeps updating there
 -   **Windows downloads are just two files**: `-portable.zip` and `-setup.exe`. The zip under its old name (`-windows-x64.zip`) is no longer published, so **the portable 5.4.2 cannot update itself to this version**: download the portable zip once by hand
@@ -26,6 +32,7 @@
 -   The Flatpak could keep the computer awake after transfers stopped and started again quickly
 -   Security: in portable mode on Linux, the working copy of the settings sat in the shared temp folder, where another user could plant settings (including which rclone runs). It is now in a folder of your own
 -   File names with `<` or `&` could show as formatted text on mount and stream cards and in tooltips
+-   The rclone update message and the status bar showed a folder path with `&` or `<` in it wrongly
 
 ### Tests
 -   `test_safe_file`: saving in place with a complete copy beside it, an interrupted earlier save, an unwritable folder, Scoop's hard links

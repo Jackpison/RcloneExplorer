@@ -90,7 +90,6 @@ public:
                            const QString &text)
       : QListWidgetItem(icon, text), mJobData(jo) {}
 
-  void SetData(JobOptions *jo) { mJobData = jo; }
   JobOptions *GetData() { return mJobData; }
 
 private:
