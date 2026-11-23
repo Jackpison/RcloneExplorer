@@ -314,6 +314,7 @@ QToolButton[status="running"] { color: @accentText; background: @accentTint; }
 QToolButton[status="paused"] { color: @text2; background: @tile; }
 QToolButton[status="done"] { color: @success; background: @successTint; }
 QToolButton[status="error"] { color: @critical; background: @criticalTint; }
+QLabel[status="error"] { color: @critical; background: @criticalTint; border-radius: 6px; padding: 6px 10px; }
 
 /* ---------- Mirror page ---------- */
 QWidget#MirrorDests { background: @headerBg; border: none; border-top: 1px solid @divider;

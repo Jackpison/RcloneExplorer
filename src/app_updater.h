@@ -22,18 +22,26 @@ public:
   void check();
   void install(const AppUpdate::Release &release);
   void cancel();
+  // Asked just before anything is installed: false (transfers running) stops
+  // the update, as the restart would end them.
+  void setMayRestart(std::function<bool()> check) { mMayRestart = std::move(check); }
 
 signals:
   void found(const AppUpdate::Release &release);
   void failed(const QString &error);
   void status(const QString &text);
   void progress(qint64 done, qint64 total);
+  // false while files are being swapped: that cannot be stopped halfway
+  void cancellable(bool can);
   // the new version is in place (or its setup started): quit now
   void readyToRestart();
 
 private:
   QNetworkAccessManager *mNet;
   QPointer<QNetworkReply> mReply;
+  QPointer<QProcess> mUnpack;
+  std::function<bool()> mMayRestart;
+  bool mInstalling = false;
   std::unique_ptr<QTemporaryDir> mWork;
   bool mBusy = false;
   bool mCancelled = false;

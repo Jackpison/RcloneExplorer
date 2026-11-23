@@ -51,9 +51,15 @@ void AppUpdater::fail(const QString &error) {
 }
 
 void AppUpdater::cancel() {
+  if (mInstalling) {
+    return; // files are being swapped: that finishes (or is put back) first
+  }
   mCancelled = true;
   if (mReply) {
     mReply->abort();
+  }
+  if (mUnpack) {
+    mUnpack->kill();
   }
 }
 
@@ -78,7 +84,11 @@ void AppUpdater::check() {
 }
 
 void AppUpdater::install(const AppUpdate::Release &release) {
-  if (mBusy || !canInstall()) {
+  if (!canInstall()) {
+    return;
+  }
+  if (mBusy) {
+    emit failed(tr("Rclone Explorer is still checking for updates. Try again in a moment."));
     return;
   }
   const bool zip = kind() == AppUpdate::Kind::PortableZip;
@@ -118,19 +128,20 @@ void AppUpdater::install(const AppUpdate::Release &release) {
 
     emit status(tr("Downloading %1…").arg(target.name));
     QNetworkReply *reply = get(target.url);
-    // written to disk as it arrives, and hashed on the way
+    // written to disk as it arrives
     auto *out = new QFile(mWork->filePath(target.name), reply);
-    auto hash = std::make_shared<QCryptographicHash>(QCryptographicHash::Sha256);
+    auto writeFailed = std::make_shared<bool>(false);
     if (!out->open(QIODevice::WriteOnly)) {
       reply->abort();
       fail(tr("Cannot write %1.").arg(QDir::toNativeSeparators(out->fileName())));
       return;
     }
-    connect(reply, &QIODevice::readyRead, this, [reply, out, hash]() {
-      const QByteArray chunk = reply->readAll();
-      hash->addData(chunk);
-      out->write(chunk);
-    });
+    auto save = [out, writeFailed](const QByteArray &chunk) {
+      if (!chunk.isEmpty() && out->write(chunk) != chunk.size()) {
+        *writeFailed = true;
+      }
+    };
+    connect(reply, &QIODevice::readyRead, this, [reply, save]() { save(reply->readAll()); });
     connect(reply, &QNetworkReply::downloadProgress, this,
             [this, reply](qint64 got, qint64 total) {
               if (got > kMaxDownload || total > kMaxDownload) {
@@ -140,11 +151,10 @@ void AppUpdater::install(const AppUpdate::Release &release) {
               emit progress(got, total);
             });
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, out, hash, expected, target, release]() {
+            [this, reply, out, save, writeFailed, expected, target, release]() {
               reply->deleteLater();
-              const QByteArray rest = reply->readAll();
-              hash->addData(rest);
-              out->write(rest);
+              save(reply->readAll());
+              const bool flushed = out->flush();
               out->close();
               // after redirects the file must still have come over HTTPS
               if (mCancelled || reply->error() != QNetworkReply::NoError ||
@@ -152,12 +162,21 @@ void AppUpdater::install(const AppUpdate::Release &release) {
                 fail(tr("Downloading %1 failed.").arg(target.name));
                 return;
               }
-              if (QString::fromLatin1(hash->result().toHex()) != expected) {
+              if (*writeFailed || !flushed) {
+                fail(tr("Cannot save %1. Is the disk full?").arg(target.name));
+                return;
+              }
+              // the checksum of the file as saved, which is what gets used
+              QFile saved(out->fileName());
+              QCryptographicHash hash(QCryptographicHash::Sha256);
+              if (!saved.open(QIODevice::ReadOnly) || !hash.addData(&saved) ||
+                  QString::fromLatin1(hash.result().toHex()) != expected) {
                 fail(tr("The download of %1 does not match its published checksum; it may be "
                         "damaged or tampered with. Nothing was changed.")
                          .arg(target.name));
                 return;
               }
+              saved.close();
               verified(release, out->fileName());
             });
   });
@@ -165,6 +184,12 @@ void AppUpdater::install(const AppUpdate::Release &release) {
 
 void AppUpdater::verified(const AppUpdate::Release &release, const QString &file) {
   Q_UNUSED(release);
+  // transfers may have started meanwhile (a schedule): the restart would stop them
+  if (mMayRestart && !mMayRestart()) {
+    fail(tr("Transfers, mounts or streams started while the update was downloading. Update "
+            "again once they have finished."));
+    return;
+  }
   if (kind() == AppUpdate::Kind::Installer) {
     // The setup closes nothing by itself: the app quits right after starting
     // it, the setup waits for that, installs and starts the new version.
@@ -192,6 +217,7 @@ void AppUpdater::unpackAndApply(const QString &zip) {
   const QString tar =
       QDir(qEnvironmentVariable("SystemRoot", "C:\\Windows")).filePath("System32/tar.exe");
   auto *p = new QProcess(this);
+  mUnpack = p;
   connect(p, &QProcess::errorOccurred, this, [this, p](QProcess::ProcessError e) {
     if (e == QProcess::FailedToStart) {
       p->deleteLater();
@@ -201,7 +227,7 @@ void AppUpdater::unpackAndApply(const QString &zip) {
   connect(p, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
           [this, p, outDir](int code, QProcess::ExitStatus st) {
             p->deleteLater();
-            if (code != 0 || st != QProcess::NormalExit) {
+            if (mCancelled || code != 0 || st != QProcess::NormalExit) {
               fail(tr("Could not unpack the update."));
               return;
             }
@@ -213,15 +239,34 @@ void AppUpdater::unpackAndApply(const QString &zip) {
               return;
             }
             const QString newRoot = QFileInfo(it.next()).absolutePath();
-            emit status(tr("Installing…"));
-            QString error;
-            if (!AppUpdate::apply(newRoot, QCoreApplication::applicationDirPath(), &error)) {
-              fail(error + " " + tr("Nothing was changed."));
+            if (mMayRestart && !mMayRestart()) {
+              fail(tr("Transfers, mounts or streams started while the update was downloading. "
+                      "Update again once they have finished."));
               return;
             }
-            mBusy = false;
-            mWork.reset();
-            emit readyToRestart();
+            // Swapping the files takes a while (a USB stick): in the
+            // background, so the window keeps responding. It cannot be
+            // cancelled halfway: it finishes or puts everything back.
+            emit status(tr("Installing…"));
+            emit cancellable(false);
+            mInstalling = true;
+            auto error = std::make_shared<QString>();
+            auto ok = std::make_shared<bool>(false);
+            const QString appDir = QCoreApplication::applicationDirPath();
+            QThread *worker = QThread::create(
+                [newRoot, appDir, error, ok]() { *ok = AppUpdate::apply(newRoot, appDir, error.get()); });
+            connect(worker, &QThread::finished, this, [this, worker, error, ok]() {
+              worker->deleteLater();
+              mInstalling = false;
+              if (!*ok) {
+                fail(*error + " " + tr("Nothing was changed."));
+                return;
+              }
+              mBusy = false;
+              mWork.reset();
+              emit readyToRestart();
+            });
+            worker->start();
           });
   p->start(tar, {"-xf", QDir::toNativeSeparators(zip), "-C", QDir::toNativeSeparators(outDir)});
 }

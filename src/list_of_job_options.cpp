@@ -47,8 +47,7 @@ bool ListOfJobOptions::Forget(JobOptions *jo) {
   return isKnown;
 }
 
-QFile *ListOfJobOptions::GetPersistenceFile(QIODevice::OpenModeFlag mode) {
-
+QString ListOfJobOptions::persistencePath() {
   QDir outputDir;
 
   if (IsPortableMode()) {
@@ -56,13 +55,11 @@ QFile *ListOfJobOptions::GetPersistenceFile(QIODevice::OpenModeFlag mode) {
     // excecutable
 #ifdef Q_OS_MACOS
     // on macOS excecutable file is located in
-    // ./rclone-browser.app/Contents/MasOS/
-    // to get actual bundle folder we have
+    // ./rclone-browser.app/Contents/MasOS/ to get actual bundle folder we have
     // to traverse three levels up
     outputDir = QDir(qApp->applicationDirPath() + "/../../..");
 #else
 #ifdef Q_OS_WIN
-    // not macOS
     outputDir = QDir(qApp->applicationDirPath());
 #else
     QString xdg_config_home = qgetenv("XDG_CONFIG_HOME");
@@ -80,61 +77,75 @@ QFile *ListOfJobOptions::GetPersistenceFile(QIODevice::OpenModeFlag mode) {
   if (!outputDir.exists()) {
     outputDir.mkpath(".");
   }
-  QString filePath = outputDir.absoluteFilePath(persistenceFileName);
-  QFile *file = new QFile(filePath);
-
-  if (!file->open(mode)) {
-    delete file;
-    file = nullptr;
-  }
-  return file;
+  return outputDir.absoluteFilePath(persistenceFileName);
 }
 
-bool ListOfJobOptions::RestoreFromUserData(ListOfJobOptions &dataIn) {
-  QFile *file = GetPersistenceFile(QIODevice::ReadOnly);
-  if (file == nullptr)
-    return false;
-  QDataStream instream(file);
-  instream.setVersion(QDataStream::Qt_5_2);
+namespace {
 
-  while (!instream.atEnd()) {
+// The tasks in `data`. False if it is damaged (cut off by a crash, for
+// example): `out` then holds the tasks before the damage.
+bool readTasks(const QByteArray &data, QList<JobOptions *> *out) {
+  QDataStream in(data);
+  in.setVersion(QDataStream::Qt_5_2);
+  while (!in.atEnd()) {
+    auto *jo = new JobOptions();
+    bool ok = true;
     try {
-      JobOptions *jo = new JobOptions();
-      instream >> *jo;
-      dataIn.tasks.append(jo);
-    } catch (SerializationException &ex) {
-      file->close();
-      delete file;
+      in >> *jo;
+    } catch (SerializationException &) {
+      ok = false;
+    }
+    if (!ok || in.status() != QDataStream::Ok) {
+      delete jo;
       return false;
     }
+    out->append(jo);
   }
-
-  file->close();
-  delete file;
-
   return true;
+}
+
+} // namespace
+
+bool ListOfJobOptions::RestoreFromUserData(ListOfJobOptions &dataIn) {
+  const QString path = persistencePath();
+  // a complete copy left beside the file by an interrupted save is the newest
+  QFile pending(PendingSaveFile(path));
+  if (pending.open(QIODevice::ReadOnly)) {
+    QList<JobOptions *> tasks;
+    if (readTasks(pending.readAll(), &tasks)) {
+      dataIn.tasks = tasks;
+      return true;
+    }
+    qDeleteAll(tasks);
+  }
+  QFile f(path);
+  if (!f.open(QIODevice::ReadOnly)) {
+    return false;
+  }
+  QList<JobOptions *> tasks;
+  const bool ok = readTasks(f.readAll(), &tasks);
+  dataIn.tasks = tasks; // a damaged file: at least the tasks before the damage
+  if (!ok) {
+    // kept, as the next save writes over it
+    const QString copy = path + ".damaged";
+    QFile::remove(copy);
+    QFile::copy(path, copy);
+  }
+  return ok;
 }
 
 bool ListOfJobOptions::PersistToUserData() {
-  QFile *file = GetPersistenceFile(
-      QIODevice::WriteOnly); // note this mode implies Truncate also
-  if (file == nullptr)
-    return false;
-  QDataStream outstream(file);
-  outstream.setVersion(QDataStream::Qt_5_2);
-
-  for (JobOptions *it : tasks) {
-    outstream << *it;
+  QByteArray data;
+  {
+    QDataStream outstream(&data, QIODevice::WriteOnly);
+    outstream.setVersion(QDataStream::Qt_5_2);
+    for (JobOptions *it : tasks) {
+      outstream << *it;
+    }
   }
-
-  file->flush();
-  file->close();
-
+  const bool saved = WriteFileSafely(persistencePath(), data); // see utils.h
   emit tasksListUpdated();
-
-  delete file;
-
-  return true;
+  return saved;
 }
 
 QDataStream &operator<<(QDataStream &stream, JobOptions &jo) {

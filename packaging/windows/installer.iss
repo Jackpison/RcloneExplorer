@@ -1,9 +1,10 @@
 ; Rclone Explorer setup for Windows, built by the Update workflow with Inno Setup 6.
 ;   ISCC.exe /DMyVersion=5.4.2 /DSource=<folder with Rclone Explorer.exe> /O<out dir> installer.iss
-; Asks whether to install for the current user only (the default: no
-; administrator rights, into %LOCALAPPDATA%\Programs\Rclone Explorer, updated
-; silently) or for all users (into C:\Program Files\Rclone Explorer, with an
-; administrator prompt, also for updates). Without "Rclone Explorer.ini" the
+; Installs for the current user (no administrator rights, into
+; %LOCALAPPDATA%\Programs\Rclone Explorer, updated silently), with no question
+; before the wizard. Administrators who want it for all users run it with
+; /ALLUSERS (into C:\Program Files\Rclone Explorer, with an administrator
+; prompt, also for updates). Without "Rclone Explorer.ini" the
 ; app runs in normal mode: settings live in the user profile, so updates never
 ; touch them, and an uninstall leaves them in place.
 
@@ -28,9 +29,11 @@ DefaultDirName={autopf}\Rclone Explorer
 DefaultGroupName=Rclone Explorer
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-; "Install for me only" or "Install for all users"; /CURRENTUSER or /ALLUSERS
-; on the command line skip the question. An update keeps the earlier choice.
-PrivilegesRequiredOverridesAllowed=dialog commandline
+; For you by default; /ALLUSERS on the command line installs for everyone.
+; No separate "for me / for all users" box: it appeared before the wizard and
+; looked out of place. An update keeps the earlier choice (also for copies
+; installed for all users with 5.4.3).
+PrivilegesRequiredOverridesAllowed=commandline
 UsePreviousPrivileges=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

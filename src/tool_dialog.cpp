@@ -18,8 +18,12 @@ ToolDialog::ToolDialog(Tool tool, const QString &source, QWidget *parent)
   auto addOther = [&](const QString &label) {
     mOther = new QLineEdit;
     mOther->setPlaceholderText(tr("remote:folder  or a folder on this PC"));
-    auto *completer = new QCompleter(ListRemoteNames(), mOther);
+    auto *names = new QStringListModel(mOther);
+    auto *completer = new QCompleter(names, mOther);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
+    ListRemoteNames(names, [names](const QStringList &remotes) {
+      names->setStringList(remotes);
+    });
     mOther->setCompleter(completer);
     auto *browseRemote = new QToolButton;
     browseRemote->setText(tr("Remote…"));

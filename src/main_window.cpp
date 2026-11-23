@@ -293,8 +293,19 @@ MainWindow::MainWindow() {
   QObject::connect(ui.buttonDeleteTask, &QPushButton::clicked, this, [=, this]() {
     JobOptionsListWidgetItem *item = static_cast<JobOptionsListWidgetItem *>(
         ui.tasksListWidget->currentItem());
+    if (!item) {
+      return;
+    }
     JobOptions *jo = item->GetData();
-    ListOfJobOptions::getInstance()->Forget(jo);
+    if (!Theme::confirm(this, tr("Delete task"),
+                        tr("Delete the task \u201C%1\u201D?").arg(jo->description),
+                        tr("Its schedule is removed too. Files are not touched."),
+                        tr("Delete"), tr("Cancel"))) {
+      return;
+    }
+    if (ListOfJobOptions::getInstance()->Forget(jo)) {
+      delete jo; // the list (and its items) no longer point to it
+    }
   });
 
   QObject::connect(ListOfJobOptions::getInstance(),
@@ -732,8 +743,18 @@ bool MainWindow::canClose() {
   }
 
   if (stop) {
+    // Collected first: stopping a job removes its card from the list, which
+    // would make a loop over the list skip the card after it.
+    QList<QPointer<QWidget>> cards;
     for (int i = 0; i < ui.jobs->count(); i++) {
-      QWidget *widget = ui.jobs->itemAt(i)->widget();
+      if (QWidget *widget = ui.jobs->itemAt(i)->widget()) {
+        cards << widget;
+      }
+    }
+    for (const QPointer<QWidget> &widget : std::as_const(cards)) {
+      if (!widget) {
+        continue;
+      }
       if (auto mount = qobject_cast<MountWidget *>(widget)) {
         mount->cancel(true); // quitting: unmount before the app exits
       } else if (auto transfer = qobject_cast<JobWidget *>(widget)) {
@@ -1236,6 +1257,7 @@ void MainWindow::setupAppUpdater() {
     return; // a Flatpak is updated by Flathub
   }
   mAppUpdater = new AppUpdater(this);
+  mAppUpdater->setMayRestart([this]() { return mJobCount == 0; });
   QObject::connect(mAppVersion, &QLabel::linkActivated, this, [this](const QString &link) {
     if (link == "app-update") {
       offerAppUpdate(true);
@@ -1295,6 +1317,9 @@ void MainWindow::checkAppUpdate(bool interactive) {
   auto *ctx = new QObject(this);
   QObject::connect(mAppUpdater, &AppUpdater::found, ctx,
                    [this, ctx, interactive](const AppUpdate::Release &release) {
+                     // at once: offering the update below may start an install,
+                     // whose failure must not also reach this check's handlers
+                     mAppUpdater->disconnect(ctx);
                      ctx->deleteLater();
                      mStatusMessage->clear();
                      mLatestApp = release;
@@ -1305,6 +1330,7 @@ void MainWindow::checkAppUpdate(bool interactive) {
                    });
   QObject::connect(mAppUpdater, &AppUpdater::failed, ctx,
                    [this, ctx, interactive](const QString &error) {
+                     mAppUpdater->disconnect(ctx);
                      ctx->deleteLater();
                      mStatusMessage->clear();
                      if (interactive) {
@@ -1405,19 +1431,35 @@ void MainWindow::installAppUpdate() {
     }
   });
   QObject::connect(dlg, &QProgressDialog::canceled, mAppUpdater, &AppUpdater::cancel);
-  QObject::connect(mAppUpdater, &AppUpdater::failed, ctx, [this, dlg](const QString &error) {
+  QObject::connect(mAppUpdater, &AppUpdater::cancellable, ctx, [dlg](bool can) {
+    if (!can) {
+      dlg->setCancelButton(nullptr); // swapping files: it finishes or is put back
+    }
+  });
+  QObject::connect(mAppUpdater, &AppUpdater::failed, ctx, [this, dlg, ctx](const QString &error) {
+    mAppUpdater->disconnect(ctx);
     dlg->deleteLater();
     QMessageBox::warning(this, tr("Update failed"), error);
   });
-  QObject::connect(mAppUpdater, &AppUpdater::readyToRestart, ctx, [this, dlg]() {
+  QObject::connect(mAppUpdater, &AppUpdater::readyToRestart, ctx, [this, dlg, ctx]() {
+    mAppUpdater->disconnect(ctx);
     dlg->deleteLater();
-    if (AppUpdater::kind() == AppUpdate::Kind::PortableZip) {
+    const bool portable = AppUpdater::kind() == AppUpdate::Kind::PortableZip;
+    // Asks first if a job has started since (and stops it if you agree).
+    // The portable files are already in place: kept running, the new
+    // version simply starts next time.
+    if (portable && !canClose()) {
+      mStatusMessage->setText(tr("Rclone Explorer %1 is installed and starts the next time you "
+                                 "open the app.")
+                                  .arg(mLatestApp.version));
+      return;
+    }
+    if (portable) {
       // the new exe waits until this one has let go of the single-instance lock
       QProcess::startDetached(QCoreApplication::applicationFilePath(), {"--after-update"},
                               QCoreApplication::applicationDirPath());
     }
     mCloseToTray = false;
-    close();
     qApp->quit();
   });
   dlg->show();
@@ -1478,6 +1520,8 @@ void MainWindow::checkRcloneUpdate(bool interactive) {
   QObject::connect(
       mUpdater, &RcloneUpdater::latestVersionFound, ctx,
       [this, ctx, interactive](const QString &latest) {
+        mUpdater->disconnect(ctx); // at once: a dialog below must not let a later
+                                   // failure reach these handlers too
         ctx->deleteLater();
         mStatusMessage->clear();
         mLatestRclone = latest;
@@ -1543,6 +1587,8 @@ void MainWindow::checkRcloneUpdate(bool interactive) {
       });
   QObject::connect(mUpdater, &RcloneUpdater::failed, ctx,
                    [this, ctx, interactive](const QString &error) {
+                     mUpdater->disconnect(ctx); // at once: a dialog below must not let a later
+                                                // failure reach these handlers too
                      ctx->deleteLater();
                      mStatusMessage->clear();
                      if (interactive) {
@@ -1585,6 +1631,8 @@ void MainWindow::offerRcloneDownload() {
   mStatusMessage->setText(tr("Looking up the latest rclone…"));
   QObject::connect(mUpdater, &RcloneUpdater::latestVersionFound, ctx,
                    [this, ctx](const QString &latest) {
+                     mUpdater->disconnect(ctx); // at once: a dialog below must not let a later
+                                                // failure reach these handlers too
                      ctx->deleteLater();
                      mStatusMessage->clear();
                      mLatestRclone = latest;
@@ -1592,6 +1640,8 @@ void MainWindow::offerRcloneDownload() {
                    });
   QObject::connect(mUpdater, &RcloneUpdater::failed, ctx,
                    [this, ctx](const QString &error) {
+                     mUpdater->disconnect(ctx); // at once: a dialog below must not let a later
+                                                // failure reach these handlers too
                      ctx->deleteLater();
                      mStatusMessage->clear();
                      QMessageBox::warning(this, tr("Download failed"), error);

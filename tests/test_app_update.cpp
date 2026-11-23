@@ -150,6 +150,57 @@ private slots:
     QCOMPARE(read(app + "/Rclone Explorer.exe"), QByteArray("new exe"));
   }
 
+  void droppedFilesArePutAside() {
+    QTemporaryDir root;
+    const QString app = root.filePath("app"), next = root.filePath("new");
+    // the installed version lists its files
+    write(app + "/Rclone Explorer.exe", "old exe");
+    write(app + "/Qt6Old.dll", "dropped in the new version");
+    write(app + "/qt/plugins/old.dll", "dropped plugin");
+    write(app + "/tasks.bin", "my tasks");
+    write(app + "/my notes.txt", "not the app's");
+    write(app + "/" + fileListName(),
+          "Rclone Explorer.exe\nQt6Old.dll\nqt/plugins/old.dll\ntasks.bin\nrclone/rclone.exe\n"
+          "../outside.txt\nC:/Windows/win.ini\n");
+    write(root.filePath("outside.txt"), "outside");
+    write(app + "/rclone/rclone.exe", "my rclone");
+    write(next + "/Rclone Explorer.exe", "new exe");
+    write(next + "/" + fileListName(), "Rclone Explorer.exe\n");
+
+    QString error;
+    QVERIFY2(apply(next, app, &error), qPrintable(error));
+    QVERIFY(!QFileInfo::exists(app + "/Qt6Old.dll"));
+    QVERIFY(!QFileInfo::exists(app + "/qt/plugins/old.dll"));
+    QCOMPARE(read(app + "/tasks.bin"), QByteArray("my tasks"));       // the user's
+    QCOMPARE(read(app + "/rclone/rclone.exe"), QByteArray("my rclone"));
+    QCOMPARE(read(app + "/my notes.txt"), QByteArray("not the app's")); // never listed
+    QCOMPARE(read(root.filePath("outside.txt")), QByteArray("outside"));
+    QCOMPARE(read(app + "/" + fileListName()), QByteArray("Rclone Explorer.exe\n"));
+    removeLeftovers(app);
+    QVERIFY(!QFileInfo::exists(app + "/Qt6Old.dll.old"));
+    QVERIFY(!QFileInfo::exists(app + "/qt/plugins/old.dll.old"));
+  }
+
+  void droppedFilesComeBackOnFailure() {
+#ifdef Q_OS_WIN
+    QSKIP("read-only folders work differently on Windows");
+#else
+    QTemporaryDir root;
+    const QString app = root.filePath("app"), next = root.filePath("new");
+    write(app + "/Rclone Explorer.exe", "old exe");
+    write(app + "/Qt6Old.dll", "dropped");
+    write(app + "/zz", "in the way");
+    write(app + "/" + fileListName(), "Rclone Explorer.exe\nQt6Old.dll\n");
+    write(next + "/Rclone Explorer.exe", "new exe");
+    write(next + "/zz/plugin.dll", "needs a folder where a file is");
+    QString error;
+    QVERIFY(!apply(next, app, &error));
+    QCOMPARE(read(app + "/Qt6Old.dll"), QByteArray("dropped"));
+    QCOMPARE(read(app + "/Rclone Explorer.exe"), QByteArray("old exe"));
+    QVERIFY(!QFileInfo::exists(app + "/Qt6Old.dll.old"));
+#endif
+  }
+
   void relativeFoldersWork() {
     // the folders may be given relative to the working folder
     QTemporaryDir root;

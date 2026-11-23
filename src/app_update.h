@@ -67,7 +67,12 @@ Rule ruleFor(const QString &relativePath);
 // so each replaced file is first renamed to "<name>.old" and listed in
 // leftoversFile(), to be deleted on the next start. On any failure everything
 // is put back as it was and `error` says why.
+// Files of the installed version that the new one does not list in its
+// fileListName() are put aside the same way, so none stays behind.
 bool apply(const QString &newRoot, const QString &appDir, QString *error);
+// "app-files.txt": every file of a release, one relative path per line
+// (written by the release workflow into the portable folder).
+QString fileListName();
 QString leftoversFile(const QString &appDir);
 // Deletes the files an earlier update left behind (see apply()).
 void removeLeftovers(const QString &appDir);

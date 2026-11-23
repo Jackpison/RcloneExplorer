@@ -157,6 +157,9 @@ void RcloneUpdater::cancel() {
   if (mReply) {
     mReply->abort();
   }
+  if (mProc) {
+    mProc->kill(); // unpacking or test-running the new rclone
+  }
 }
 
 // ---------------------------------------------------------------- check ----
@@ -359,8 +362,13 @@ void RcloneUpdater::extract(const QString &version, const QString &zipPath,
     return;
   }
 
+  if (mCancelled) {
+    fail(QString());
+    return;
+  }
   emit status(tr("Unpacking…"));
   auto *p = new QProcess(this);
+  mProc = p;
   connect(p, &QProcess::errorOccurred, this, [=, this](QProcess::ProcessError e) {
     if (e == QProcess::FailedToStart) {
       p->deleteLater();
@@ -370,6 +378,10 @@ void RcloneUpdater::extract(const QString &version, const QString &zipPath,
   connect(p, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
           [=, this](int code, QProcess::ExitStatus st) {
             p->deleteLater();
+            if (mCancelled) {
+              fail(QString());
+              return;
+            }
             if (code != 0 || st != QProcess::NormalExit) {
               extract(version, zipPath, attempt + 1);
               return;
@@ -403,6 +415,7 @@ void RcloneUpdater::finishInstall(const QString &version,
   // downloaded program for a few seconds on its first start.
   emit status(tr("Checking the new rclone…"));
   auto *p = new QProcess(this);
+  mProc = p;
   auto *timeout = new QTimer(p);
   timeout->setSingleShot(true);
   connect(timeout, &QTimer::timeout, p, [p]() { p->kill(); });
@@ -415,6 +428,10 @@ void RcloneUpdater::finishInstall(const QString &version,
   connect(p, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
           [this, p, version, newExe](int, QProcess::ExitStatus) {
             p->deleteLater();
+            if (mCancelled) {
+              fail(QString());
+              return;
+            }
             const QString out = QString::fromUtf8(p->readAllStandardOutput());
             if (!out.startsWith("rclone " + version)) {
               fail(tr("The downloaded rclone did not run correctly; nothing was changed."));

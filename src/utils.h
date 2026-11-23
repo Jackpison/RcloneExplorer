@@ -1,5 +1,7 @@
 #pragma once
 
+#include "safe_file.h"
+
 #include "pch.h"
 #include "command_args.h"
 
@@ -13,6 +15,7 @@ bool IsFlatpak();
 // shortened in the middle instead of being cut off at the edge (message
 // boxes only wrap at spaces). Short names are returned unchanged.
 QString ForMessage(const QString &text);
+
 
 // Windows portable mode: releases up to 4.x were called "Rclone Browser" and
 // kept their settings in RcloneBrowser.ini next to the exe. Copy such a file
@@ -42,9 +45,14 @@ QStringList GetShowHidden();
 unsigned int compareVersion(std::string, std::string);
 
 // Names of the remotes in the rclone configuration, each with its trailing
-// colon ("drive:"), as `rclone listremotes` prints them. Waits briefly for
-// rclone; returns an empty list if it cannot be run.
-// "name:" for every remote. Uses the list the main window keeps up to date;
-// asks rclone (and waits) only before that list exists.
-QStringList ListRemoteNames();
+// colon ("drive:"), as `rclone listremotes` prints them. Uses the list the
+// main window keeps up to date and then calls `done` right away; before that
+// list exists it asks rclone and calls `done` later (an empty list if rclone
+// cannot be run). Nothing is called once `context` is gone.
+void ListRemoteNames(QObject *context,
+                     const std::function<void(const QStringList &)> &done);
 void SetKnownRemoteNames(const QStringList &names); // plain names, no ':'
+
+// A tooltip that shows `text` exactly: Qt would read a file name such as
+// "<b>x" as formatting.
+QString PlainToolTip(const QString &text);

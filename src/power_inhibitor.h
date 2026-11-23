@@ -30,6 +30,7 @@ private:
     QString handle;
     bool wanted = false;
     bool alive = true;
+    int request = 0; // the latest request: an answer to an older one is closed
   };
   std::shared_ptr<Portal> mPortal = std::make_shared<Portal>();
 #endif

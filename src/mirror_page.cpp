@@ -440,6 +440,7 @@ void MirrorPage::start(bool sync, QList<QUuid> ids, bool interactive) {
     return;
   }
   mPairs = pairs;
+  ++mRun;
   mSync = sync;
   mActive = true;
   mStopping = false;
@@ -498,14 +499,25 @@ void MirrorPage::startPair(int i) {
       pairDone(i, -1, tr("The transfer could not be started."));
       return;
     }
-    QObject::connect(job, &JobWidget::finished, this, [this, i](const QString &, bool ok) {
-      pairDone(i, ok ? 0 : 1, ok ? QString() : tr("See the transfer card on the Transfers page for details."));
+    // The card stays on the Transfers page after this run: a later run must
+    // not hear about it (closing an old card would end a copy of a new run).
+    const int run = mRun;
+    QObject::connect(job, &JobWidget::finished, this, [this, i, run](const QString &, bool ok) {
+      if (run == mRun) {
+        pairDone(i, ok ? 0 : 1, ok ? QString() : tr("See the transfer card on the Transfers page for details."));
+      }
     });
-    QObject::connect(job, &QObject::destroyed, this,
-                     [this, i]() { pairDone(i, -2, tr("The transfer was closed.")); });
+    QObject::connect(job, &QObject::destroyed, this, [this, i, run]() {
+      if (run == mRun) {
+        pairDone(i, -2, tr("The transfer was closed."));
+      }
+    });
   } else {
-    pair.proc = MirrorUtil::runRclone(this, args, [this, i](int code, const QByteArray &, const QString &err) {
-      pairDone(i, code, code == 0 ? QString() : MirrorUtil::lastError(err));
+    const int run = mRun;
+    pair.proc = MirrorUtil::runRclone(this, args, [this, i, run](int code, const QByteArray &, const QString &err) {
+      if (run == mRun) {
+        pairDone(i, code, code == 0 ? QString() : MirrorUtil::lastError(err));
+      }
     });
   }
 }

@@ -8,13 +8,23 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QSet>
 
 namespace AppUpdate {
 
 namespace {
 const char *kRepoDownloads = "https://github.com/Jackpison/RcloneExplorer/releases/download/";
 const char *kLeftovers = "update-leftovers.txt";
+const char *kFileList = "app-files.txt";
+
+// A path relative to the app folder, inside it: no "..", no drive, no "\".
+bool safeRelative(const QString &rel) {
+  return !rel.isEmpty() && !rel.split('/').contains("..") && !rel.contains(':') &&
+         !rel.contains('\\') && !QDir::isAbsolutePath(rel);
+}
 } // namespace
+
+QString fileListName() { return QString::fromLatin1(kFileList); }
 
 const Asset *Release::asset(const QString &name) const {
   for (const Asset &a : assets) {
@@ -151,8 +161,7 @@ void removeLeftovers(const QString &appDir) {
   for (const QByteArray &raw : list.readAll().split('\n')) {
     const QString rel = QString::fromUtf8(raw).trimmed();
     // only "<file>.old" inside the app folder, never anything else
-    if (rel.isEmpty() || !rel.endsWith(".old") || rel.contains("..") || rel.contains(':') ||
-        rel.contains('\\') || QDir::isAbsolutePath(rel)) {
+    if (!rel.endsWith(".old") || rel.contains("..") || !safeRelative(rel)) {
       continue;
     }
     const QString path = dir.filePath(rel);
@@ -204,6 +213,38 @@ bool apply(const QString &newRootIn, const QString &appDirIn, QString *error) {
       !rels.contains(QStringLiteral("rclone-explorer"))) {
     *error = QObject::tr("The downloaded update does not contain Rclone Explorer.");
     return false;
+  }
+
+  // Files of the installed version that the new one no longer has (it lists
+  // its files in app-files.txt): put aside like replaced files, so a dropped
+  // DLL or Qt plugin does not stay behind.
+  QStringList dropped;
+  {
+    QFile list(to.filePath(fileListName()));
+    if (list.open(QIODevice::ReadOnly)) {
+      QSet<QString> fresh;
+      for (const QString &rel : std::as_const(rels)) {
+        fresh.insert(rel.toLower());
+      }
+      for (const QByteArray &raw : list.readAll().split('\n')) {
+        const QString rel = QString::fromUtf8(raw).trimmed();
+        if (safeRelative(rel) && ruleFor(rel) == Rule::Replace && !fresh.contains(rel.toLower()) &&
+            QFileInfo(to.filePath(rel)).isFile()) {
+          dropped << rel;
+        }
+      }
+    }
+  }
+  for (const QString &rel : std::as_const(dropped)) {
+    const QString target = to.filePath(rel);
+    QFile::remove(target + ".old");
+    if (!QFile::rename(target, target + ".old")) {
+      *error = QObject::tr("Cannot replace %1. Is the folder read-only?")
+                   .arg(QDir::toNativeSeparators(target));
+      rollback();
+      return false;
+    }
+    done << Step{rel, true};
   }
 
   for (const QString &rel : std::as_const(rels)) {

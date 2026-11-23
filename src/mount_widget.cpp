@@ -11,6 +11,7 @@ MountWidget::MountWidget(QProcess *process, const QString &remote,
 
   ui.remote->setText(remote);
   ui.folder->setText(folder);
+  ui.info->setTextFormat(Qt::PlainText); // names may hold < or &
   ui.info->setText(QString("%1 on %2").arg(remote).arg(folder));
 
   ui.details->setVisible(false);

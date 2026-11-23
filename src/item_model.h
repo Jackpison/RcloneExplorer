@@ -91,6 +91,9 @@ public:
 
 signals:
   void drop(const QDir &path, const QModelIndex &parent);
+  // rclone could not list a folder; what was shown of it is kept
+  void loadFailed(const QString &folder, const QString &error);
+  void loadSucceeded();
 
 private:
   Item *mRoot;

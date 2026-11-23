@@ -222,13 +222,25 @@ int main(int argc, char *argv[]) {
   // where it cluttered the portable folder). The name includes a hash of the
   // install location, so separate portable copies can still run side by side.
   Q_UNUSED(tmpDir);
+  // An AppImage runs from a new temporary folder on every start, so it is
+  // known by the .AppImage file instead.
+  const QString location = qEnvironmentVariableIsEmpty("APPIMAGE")
+                               ? QCoreApplication::applicationDirPath()
+                               : QFileInfo(qEnvironmentVariable("APPIMAGE")).absoluteFilePath();
   const QByteArray installId =
-      QCryptographicHash::hash(QCoreApplication::applicationDirPath().toUtf8(),
-                               QCryptographicHash::Sha256)
-          .toHex()
-          .left(16);
-  QLockFile lockFile(QDir::temp().filePath("RcloneExplorer_" +
-                                           QString::fromLatin1(installId) + ".lock"));
+      QCryptographicHash::hash(location.toUtf8(), QCryptographicHash::Sha256).toHex().left(16);
+  // A folder of this user's only: /tmp is shared by everyone on Linux, where
+  // another user's lock would stop this user from starting the app.
+  // (On Windows the temp folder is already the user's own.)
+  QString lockDir = QDir::tempPath();
+#ifndef Q_OS_WIN
+  const QString runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+  if (!runtime.isEmpty() && QDir().mkpath(runtime)) {
+    lockDir = runtime;
+  }
+#endif
+  QLockFile lockFile(QDir(lockDir).filePath("RcloneExplorer_" +
+                                            QString::fromLatin1(installId) + ".lock"));
 
   // Started by an update: the old version is still closing, so wait for it.
   const bool afterUpdate = QCoreApplication::arguments().contains("--after-update");

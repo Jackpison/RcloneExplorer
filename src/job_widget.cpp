@@ -39,7 +39,7 @@ public:
   void setProgress(int percent, const QString &detail) {
     mBar->setValue(percent);
     mPercent->setText(QString::number(percent) + "%");
-    setToolTip(mName + "\n" + detail);
+    setToolTip(PlainToolTip(mName + "\n" + detail));
   }
 
 private:
@@ -67,8 +67,8 @@ JobWidget::JobWidget(QProcess *process, const QString &info,
   // its beginning is cut off: show the start
   ui.source->setCursorPosition(0);
   ui.dest->setCursorPosition(0);
-  ui.source->setToolTip(source);
-  ui.dest->setToolTip(dest);
+  ui.source->setToolTip(PlainToolTip(source));
+  ui.dest->setToolTip(PlainToolTip(dest));
   ui.info->setText(info);
 
   ui.details->setVisible(false);
@@ -227,6 +227,9 @@ JobWidget::JobWidget(QProcess *process, const QString &info,
                      ui.cancel->setToolTip("Close");
 
                      emit finished(ui.info->text(), status == 0);
+                     if (mClosing) {
+                       emit closed(); // cancelled: the card goes away
+                     }
                    });
 
   Theme::setStatus(ui.showDetails, "running");
@@ -242,10 +245,10 @@ void JobWidget::cancel() {
     return;
   }
 
+  // The card closes once rclone has ended (see "finished"), without the
+  // window waiting for it.
+  mClosing = true;
   mProcess->kill();
-  mProcess->waitForFinished();
-
-  emit closed();
 }
 
 // ---------------------------------------------------------------------------

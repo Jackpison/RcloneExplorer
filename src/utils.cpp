@@ -122,7 +122,21 @@ QString ShadowIniPath(const QString &ini) {
       QCryptographicHash::hash(QFileInfo(ini).absoluteFilePath().toUtf8(), QCryptographicHash::Sha1)
           .toHex()
           .left(16);
-  return QDir(QDir::tempPath()).filePath("rclone-explorer-settings-" + QString::fromLatin1(id) + ".ini");
+  // A folder only this user can open: on Linux /tmp is shared, and another
+  // user could plant a copy there for the app to read (it names the rclone
+  // program the app runs). On Windows the temp folder is the user's own.
+  static const QString dir = [] {
+#ifndef Q_OS_WIN
+    for (auto location : {QStandardPaths::RuntimeLocation, QStandardPaths::GenericCacheLocation}) {
+      const QString d = QStandardPaths::writableLocation(location);
+      if (!d.isEmpty() && QDir().mkpath(d)) {
+        return d;
+      }
+    }
+#endif
+    return QDir::tempPath();
+  }();
+  return QDir(dir).filePath("rclone-explorer-settings-" + QString::fromLatin1(id) + ".ini");
 }
 
 QByteArray ReadAll(const QString &path) {
@@ -169,8 +183,14 @@ std::unique_ptr<QSettings> GetSettings() {
       QFile::remove(shadow);
       if (QFileInfo::exists(ini)) {
         QFile::copy(ini, shadow);
-        QFile(shadow).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+      } else {
+        QFile empty(shadow); // created now, to set its permissions
+        if (!empty.open(QIODevice::WriteOnly)) {
+          qWarning("Cannot create the settings copy");
+        }
       }
+      // for this user only: it may hold the proxy's password
+      QFile(shadow).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     }
     return std::unique_ptr<QSettings>(new InPlaceIniSettings(shadow, ini));
   }
@@ -379,6 +399,14 @@ void MigrateLegacyPortableIni() {
 static QStringList gKnownRemotes;
 static bool gKnownRemotesSet = false;
 
+QString PlainToolTip(const QString &text) {
+  if (text.isEmpty()) {
+    return text;
+  }
+  return "<p style='white-space:pre'>" +
+         text.toHtmlEscaped().replace('\n', "<br>") + "</p>";
+}
+
 void SetKnownRemoteNames(const QStringList &names) {
   gKnownRemotes.clear();
   for (const QString &n : names) {
@@ -387,26 +415,46 @@ void SetKnownRemoteNames(const QStringList &names) {
   gKnownRemotesSet = true;
 }
 
-QStringList ListRemoteNames() {
+void ListRemoteNames(QObject *context,
+                     const std::function<void(const QStringList &)> &done) {
   if (gKnownRemotesSet) {
-    return gKnownRemotes; // no rclone start, so dialogs open instantly
+    done(gKnownRemotes); // no rclone start, so dialogs open instantly
+    return;
   }
-  QProcess p;
-  UseRclonePassword(&p);
-  p.setProgram(GetRclone());
-  p.setArguments(QStringList() << "listremotes" << GetRcloneConf());
-  p.setProcessChannelMode(QProcess::SeparateChannels);
-  p.start(QIODevice::ReadOnly);
-  if (!p.waitForFinished(4000) || p.exitCode() != 0) {
-    p.kill();
-    return {};
-  }
-  QStringList names;
-  for (const QString &line :
-       QString::fromUtf8(p.readAllStandardOutput()).split('\n')) {
-    if (!line.trimmed().isEmpty()) {
-      names << line.trimmed();
+  // Ask rclone without waiting: the window keeps working meanwhile.
+  auto *p = new QProcess(context);
+  UseRclonePassword(p);
+  p->setProgram(GetRclone());
+  p->setArguments(QStringList() << "listremotes" << GetRcloneConf());
+  p->setProcessChannelMode(QProcess::SeparateChannels);
+  auto answered = std::make_shared<bool>(false);
+  auto answer = [done, answered](const QStringList &names) {
+    if (!*answered) {
+      *answered = true;
+      done(names);
     }
-  }
-  return names;
+  };
+  QObject::connect(p, &QProcess::finished, context,
+                   [p, answer](int code, QProcess::ExitStatus status) {
+                     QStringList names;
+                     if (status == QProcess::NormalExit && code == 0) {
+                       for (const QString &line : QString::fromUtf8(
+                                p->readAllStandardOutput()).split('\n')) {
+                         if (!line.trimmed().isEmpty()) {
+                           names << line.trimmed();
+                         }
+                       }
+                     }
+                     p->deleteLater();
+                     answer(names);
+                   });
+  QObject::connect(p, &QProcess::errorOccurred, context,
+                   [p, answer](QProcess::ProcessError e) {
+                     if (e == QProcess::FailedToStart) {
+                       p->deleteLater();
+                       answer({});
+                     }
+                   });
+  QTimer::singleShot(10000, p, [p]() { p->kill(); });
+  p->start(QIODevice::ReadOnly);
 }

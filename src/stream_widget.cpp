@@ -11,6 +11,7 @@ StreamWidget::StreamWidget(QProcess *rclone, QProcess *player,
 
   ui.remote->setText(remote);
   ui.stream->setText(stream);
+  ui.info->setTextFormat(Qt::PlainText); // names may hold < or &
   ui.info->setText(remote);
 
   ui.details->setVisible(false);
@@ -71,7 +72,7 @@ void StreamWidget::cancel() {
     return;
   }
 
+  // the card closes once rclone has ended (see "finished")
   mPlayer->terminate();
   mRclone->kill();
-  mRclone->waitForFinished();
 }

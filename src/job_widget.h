@@ -27,6 +27,7 @@ private:
   Ui::JobWidget ui;
 
   bool mRunning = true;
+  bool mClosing = false; // cancelled: close the card once rclone has ended
   QProcess *mProcess;
 
   QStringList mArgs;

@@ -20,10 +20,6 @@ RemoteFolderDialog::RemoteFolderDialog(const QString &start, QWidget *parent)
   auto *layout = new QVBoxLayout(this);
 
   mRemote = new QComboBox;
-  const QStringList remotes = ListRemoteNames();
-  for (const QString &name : remotes) {
-    mRemote->addItem(name.chopped(1), name); // shown without the colon
-  }
   auto *form = new QFormLayout;
   form->addRow(tr("Remote"), mRemote);
   layout->addLayout(form);
@@ -69,13 +65,31 @@ RemoteFolderDialog::RemoteFolderDialog(const QString &start, QWidget *parent)
                      }
                    });
 
+  // filled once the remotes are known (at once, unless rclone must be asked)
+  mRemote->setEnabled(false);
+  mOk->setEnabled(false);
+  mHint->setText(tr("Loading remotes…"));
+  ListRemoteNames(this, [this, start](const QStringList &remotes) {
+    showRemotes(remotes, start);
+  });
+}
+
+void RemoteFolderDialog::showRemotes(const QStringList &remotes,
+                                     const QString &start) {
   if (remotes.isEmpty()) {
     mHint->setText(tr("No remotes are configured yet."));
-    mOk->setEnabled(false);
-    mRemote->setEnabled(false);
     mPath->setEnabled(false);
     return;
   }
+  {
+    const QSignalBlocker quiet(mRemote); // listed once, below
+    for (const QString &name : remotes) {
+      mRemote->addItem(name.chopped(1), name); // shown without the colon
+    }
+  }
+  mRemote->setEnabled(true);
+  mOk->setEnabled(true);
+  mHint->clear();
 
   // "remote:folder" opens that remote with the folder filled in
   QString startPath;
@@ -83,6 +97,7 @@ RemoteFolderDialog::RemoteFolderDialog(const QString &start, QWidget *parent)
   if (colon > 0) {
     const int i = mRemote->findData(start.left(colon + 1));
     if (i >= 0) {
+      const QSignalBlocker quiet(mRemote);
       mRemote->setCurrentIndex(i);
       startPath = start.mid(colon + 1);
     }

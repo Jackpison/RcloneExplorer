@@ -27,12 +27,9 @@ namespace {
 QString plansFile() { return QDir(dataDir()).filePath("mirrors.json"); }
 QString historyFile() { return QDir(dataDir()).filePath("mirror_history.json"); }
 
-// A save in progress: the complete new content, kept until the real file has
-// been written (see writeJson).
-QString pendingFile(const QString &path) { return path + ".saving"; }
-
 QJsonDocument readJson(const QString &path) {
-  for (const QString &file : {path, pendingFile(path)}) {
+  // what an interrupted save left complete beside the file is the newest
+  for (const QString &file : {PendingSaveFile(path), path}) {
     QFile f(file);
     if (!f.open(QIODevice::ReadOnly)) {
       continue;
@@ -40,34 +37,14 @@ QJsonDocument readJson(const QString &path) {
     QJsonParseError error;
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &error);
     if (error.error == QJsonParseError::NoError) {
-      return doc; // the file, or what an interrupted save left behind
+      return doc;
     }
   }
   return {};
 }
 
 void writeJson(const QString &path, const QJsonDocument &doc) {
-  // Written into the existing file rather than replacing it: Scoop keeps
-  // these files across updates through hard links, which a replaced file
-  // would cut (the same reason the ini and tasks.bin are written in place).
-  // The new content is first saved completely beside it, so a crash or a
-  // full disk halfway through loses nothing (readJson falls back to it).
-  const QByteArray data = doc.toJson(QJsonDocument::Indented);
-  QFile f(path);
-  if (f.open(QIODevice::ReadOnly) && f.readAll() == data) {
-    return;
-  }
-  f.close();
-  QSaveFile pending(pendingFile(path));
-  if (!pending.open(QIODevice::WriteOnly) || pending.write(data) != data.size() ||
-      !pending.commit()) {
-    return; // nothing changed
-  }
-  if (f.open(QIODevice::WriteOnly | QIODevice::Truncate) && f.write(data) == data.size() &&
-      f.flush()) {
-    f.close();
-    QFile::remove(pendingFile(path));
-  }
+  WriteFileSafely(path, doc.toJson(QJsonDocument::Indented)); // see utils.h
 }
 
 QJsonArray capped(const QStringList &l) {

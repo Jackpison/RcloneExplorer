@@ -67,17 +67,21 @@ void PowerInhibitor::start() {
     call << QString() << kSuspend
          << QVariantMap{{"reason", QStringLiteral("Transfers are running")}};
     mPortal->wanted = true;
+    const int request = ++mPortal->request;
     auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call));
     std::shared_ptr<Portal> portal = mPortal;
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher,
-                     [portal](QDBusPendingCallWatcher *w) {
+                     [portal, request](QDBusPendingCallWatcher *w) {
                        w->deleteLater();
                        const QDBusPendingReply<QDBusObjectPath> reply = *w;
                        if (reply.isError()) {
                          return; // no portal either: nothing to ask
                        }
                        const QString handle = reply.value().path();
-                       if (portal->alive && portal->wanted) {
+                       // only the answer to the latest request is kept: an
+                       // older one (stopped and started again meanwhile)
+                       // would otherwise never be closed
+                       if (portal->alive && portal->wanted && request == portal->request) {
                          portal->handle = handle;
                        } else {
                          closePortalRequest(handle); // no longer wanted meanwhile
@@ -100,13 +104,17 @@ void PowerInhibitor::stop() {
   if (!mHelper) {
     return;
   }
-  mHelper->closeWriteChannel();
-  if (!mHelper->waitForFinished(1500)) {
-    mHelper->kill();
-    mHelper->waitForFinished(500);
-  }
-  delete mHelper;
+  // Closing its input ends the helper (and the lock); the window does not
+  // wait for it to exit. It is cleaned up once it has, or killed if it hangs.
+  QProcess *helper = mHelper;
   mHelper = nullptr;
+  if (helper->state() == QProcess::NotRunning) {
+    delete helper;
+    return;
+  }
+  QObject::connect(helper, &QProcess::finished, helper, &QObject::deleteLater);
+  helper->closeWriteChannel();
+  QTimer::singleShot(3000, helper, [helper]() { helper->kill(); });
 }
 
 #endif

@@ -68,6 +68,7 @@ private:
 
   QNetworkAccessManager *mNet;
   QList<Source> mSources;
+  QPointer<QProcess> mProc;
   QPointer<QNetworkReply> mReply;
   std::unique_ptr<QTemporaryDir> mWorkDir;
   bool mBusy = false;

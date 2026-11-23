@@ -27,6 +27,7 @@ set(SOURCES
   app_update.cpp app_update.h
   app_updater.cpp app_updater.h
   utils.cpp utils.h
+  safe_file.cpp safe_file.h
   command_args.h elided_label.h
   sound_player.cpp sound_player.h
   power_inhibitor.cpp power_inhibitor.h
@@ -152,5 +153,11 @@ if(RB_BUILD_TESTS)
     target_link_libraries(test_app_update PRIVATE Qt::Core Qt::Test)
     set_target_properties(test_app_update PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
     add_test(NAME app_update COMMAND test_app_update)
+
+    add_executable(test_safe_file ../tests/test_safe_file.cpp safe_file.cpp safe_file.h)
+    target_include_directories(test_safe_file PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(test_safe_file PRIVATE Qt::Core Qt::Test)
+    set_target_properties(test_safe_file PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    add_test(NAME safe_file COMMAND test_safe_file)
   endif()
 endif()

@@ -61,6 +61,7 @@ private:
     QPointer<QProcess> proc;
   };
   QList<Pair> mPairs;
+  int mRun = 0; // counts runs, so that news from an earlier run is ignored
   bool mSync = false;
   bool mActive = false;
   bool mStopping = false;

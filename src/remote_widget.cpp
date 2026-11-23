@@ -299,7 +299,8 @@ QString root = isLocal ? "/" : QString();
       ProgressDialog progress("Delete", "Deleting...", pathMsg, &process, this);
       if (progress.exec() == QDialog::Accepted) {
         QModelIndex above = index.parent();
-        QModelIndex next = above.model()->index(index.row() + 1, 0);
+        // the row below (a sibling: the parent of a top-level row has no model)
+        QModelIndex next = index.sibling(index.row() + 1, 0);
         ui.tree->selectionModel()->select(next.isValid() ? next : above,
                                           QItemSelectionModel::SelectCurrent);
         model->removeRow(index.row(), above);
@@ -724,6 +725,21 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   QObject::connect(newTab, &QShortcut::activated, this,
                    &RemoteWidget::newTabRequested);
   v->insertWidget(0, header);
+
+  // a folder rclone could not list: said here, without a dialog per folder
+  mLoadError = new QLabel;
+  mLoadError->setTextFormat(Qt::PlainText); // remote names are never HTML
+  mLoadError->setWordWrap(true);
+  mLoadError->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  Theme::setStatus(mLoadError, "error");
+  mLoadError->hide();
+  v->insertWidget(1, mLoadError);
+  QObject::connect(model, &ItemModel::loadFailed, this,
+                   [this](const QString &folder, const QString &error) {
+                     mLoadError->setText(tr("Could not open %1: %2").arg(folder, error));
+                     mLoadError->show();
+                   });
+  QObject::connect(model, &ItemModel::loadSucceeded, mLoadError, &QWidget::hide);
 
   // ---- command bar
   struct A { QAction *a; const char *icon; QString text; };

@@ -115,10 +115,14 @@ jobs:
           $out = (Get-Content selftest.txt -Raw)
           Write-Host $out
           if ($p.ExitCode -ne 0) { throw "self-test failed ($($p.ExitCode)): $($out -replace '\s+',' ')" }
+          # The list of the app's files: the next in-app update puts aside the
+          # files a newer version no longer ships (see AppUpdate::apply).
+          $root = (Resolve-Path $dir).Path
+          Get-ChildItem $dir -Recurse -File |
+            ForEach-Object { $_.FullName.Substring($root.Length + 1).Replace('\', '/') } |
+            Where-Object { $_ -ne 'app-files.txt' } | Sort-Object |
+            Set-Content -Encoding utf8NoBOM "$dir\app-files.txt"
           Compress-Archive "$dir" "dist\RcloneExplorer-$ver-windows-x64-portable.zip"
-          # Also under the name used up to 5.4.2: those versions look for it when
-          # they update themselves. Drop this once few people still run them.
-          Copy-Item "dist\RcloneExplorer-$ver-windows-x64-portable.zip" "dist\RcloneExplorer-$ver-windows-x64.zip"
           "VERSION=$ver" | Out-File -Append $env:GITHUB_ENV
 
           # Scoop's install script (pre_install of the generated manifest) on a
@@ -374,6 +378,12 @@ jobs:
         run: |
           set -euo pipefail
           ver=$(head -1 VERSION | tr -d '[:space:]')
+          # A tag that does not match VERSION would announce an update that
+          # nobody can install (the app looks for files named after VERSION).
+          if [ "$GITHUB_REF_NAME" != "v$ver" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match VERSION ($ver): expected v$ver"
+            exit 1
+          fi
           echo "VERSION=$ver" >> "$GITHUB_ENV"
           (cd dist && sha256sum *.zip *-setup.exe *.AppImage *.zsync > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python3 - "$ver" <<'PY'
@@ -384,8 +394,8 @@ jobs:
           notes = m.group(1).strip() if m else "See CHANGELOG.md for details."
           notes += (
               "\n\n---\n**Downloads**\n\n"
-              f"- **Windows 10/11, installer:** `RcloneExplorer-{ver}-windows-x64-setup.exe`, installs for your user (no administrator rights) with a Start menu entry; updates keep your settings.\n"
-              f"- **Windows 10/11, portable:** `RcloneExplorer-{ver}-windows-x64-portable.zip`, extract anywhere and run `Rclone Explorer.exe`. (`RcloneExplorer-{ver}-windows-x64.zip` is the same file, for the in-app update of version 5.4.2.)\n"
+              f"- **Windows 10/11, installer:** `RcloneExplorer-{ver}-windows-x64-setup.exe`, installs for your user with a Start menu entry (run it with `/ALLUSERS` to install for everyone); updates keep your settings.\n"
+              f"- **Windows 10/11, portable:** `RcloneExplorer-{ver}-windows-x64-portable.zip`, extract anywhere and run `Rclone Explorer.exe`.\n"
               f"- **Linux (x86_64):** `RcloneExplorer-{ver}-x86_64.AppImage`, make it executable (`chmod +x`) and run it.\n\n"
               "SHA-256 checksums are in `SHA256SUMS.txt`."
           )

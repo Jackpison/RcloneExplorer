@@ -496,6 +496,35 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
     ls->deleteLater();
     bool parsed = false;
     const auto entries = RcloneOutput::parseLsJson(ls->readAllStandardOutput(), &parsed);
+    const bool listed = parsed && ls->exitStatus() == QProcess::NormalExit && ls->exitCode() == 0;
+    if (!listed) {
+      // Offline, an expired login...: keep what was shown and say why,
+      // instead of making the folder look empty.
+      parent->state = Item::Ready;
+      timer->stop();
+      timer->deleteLater();
+      if (parent->isDeleted) {
+        delete parent;
+        return;
+      }
+      const int row = parent->childs.indexOf(loading);
+      if (row >= 0) {
+        emit beginRemoveRows(parentIndex, row, row);
+        delete parent->childs.takeAt(row);
+        emit endRemoveRows();
+      }
+      QString error;
+      const QStringList lines =
+          QString::fromUtf8(ls->readAllStandardError()).split('\n', Qt::SkipEmptyParts);
+      static const QRegularExpression stamp(R"(^\d{4}/\d\d/\d\d \d\d:\d\d:\d\d \w+\s*: )");
+      for (auto it = lines.crbegin(); it != lines.crend() && error.isEmpty(); ++it) {
+        error = it->trimmed().remove(stamp);
+      }
+      emit loadFailed(mRemote + ":" + parent->path.path(),
+                      error.isEmpty() ? tr("rclone could not list it.") : error);
+      return;
+    }
+    emit loadSucceeded();
     for (const auto &e : entries) {
       Item *child = new Item();
       child->parent = parent;
@@ -568,8 +597,8 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
           old->modified = item->modified;
           old->size = item->size;
           modified = true;
-          emit dataChanged(createIndex(it.value(), 0, parent),
-                           createIndex(it.value(), 2, parent),
+          emit dataChanged(createIndex(it.value(), 0, old),
+                           createIndex(it.value(), columnCount(QModelIndex()) - 1, old),
                            QVector<int>{Qt::DisplayRole});
         }
         existing.erase(it);
