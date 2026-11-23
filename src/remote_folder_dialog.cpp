@@ -69,15 +69,16 @@ RemoteFolderDialog::RemoteFolderDialog(const QString &start, QWidget *parent)
   mRemote->setEnabled(false);
   mOk->setEnabled(false);
   mHint->setText(tr("Loading remotes…"));
-  ListRemoteNames(this, [this, start](const QStringList &remotes) {
-    showRemotes(remotes, start);
+  ListRemoteNames(this, [this, start](const QStringList &remotes, const QString &error) {
+    showRemotes(remotes, error, start);
   });
 }
 
-void RemoteFolderDialog::showRemotes(const QStringList &remotes,
+void RemoteFolderDialog::showRemotes(const QStringList &remotes, const QString &error,
                                      const QString &start) {
   if (remotes.isEmpty()) {
-    mHint->setText(tr("No remotes are configured yet."));
+    mHint->setText(error.isEmpty() ? tr("No remotes are configured yet.")
+                                   : tr("Could not read your remotes: %1").arg(error));
     mPath->setEnabled(false);
     return;
   }

@@ -3,18 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rclone Explorer – the rclone GUI for Windows and Linux | Free, portable cloud file manager</title>
+<title>Rclone Explorer (formerly Rclone Browser) – free rclone GUI for Windows and Linux</title>
 <meta name="description" content="Rclone Explorer (formerly Rclone Browser) is a free, open-source rclone GUI for Windows and Linux: browse, upload, download, sync and mirror files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ cloud services. Portable, no install.">
 <meta name="keywords" content="rclone gui, rclone explorer, rclone browser, rclone gui windows, rclone gui linux, rclone frontend, rclone graphical interface, cloud file manager, mirror folders between clouds, cloud to cloud sync, cloud backup, google drive, onedrive, dropbox, pcloud, s3">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="Jackpison">
+<meta name="theme-color" content="#0A0A0A">
 <link rel="canonical" href="https://jackpison.github.io/RcloneExplorer/">
-<meta property="og:title" content="Rclone Explorer – rclone GUI for Windows and Linux">
+<link rel="alternate" type="application/atom+xml" title="Rclone Explorer releases" href="https://github.com/Jackpison/RcloneExplorer/releases.atom">
+<meta property="og:site_name" content="Rclone Explorer">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Rclone Explorer (formerly Rclone Browser) – rclone GUI for Windows and Linux">
 <meta property="og:description" content="A modern rclone GUI for Windows and Linux: browse, transfer, sync and mirror files on all your cloud storage. Portable, free and open source.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jackpison.github.io/RcloneExplorer/">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:image" content="https://jackpison.github.io/RcloneExplorer/img/browser.png">
+<meta property="og:image:alt" content="Rclone Explorer browsing a cloud remote with tabs, in dark mode">
+<meta name="twitter:title" content="Rclone Explorer (formerly Rclone Browser) – rclone GUI">
+<meta name="twitter:description" content="Browse, transfer, sync and mirror files on Google Drive, OneDrive, Dropbox, pCloud, S3 and 70+ clouds. Free, open source, for Windows and Linux.">
+<meta name="twitter:image" content="https://jackpison.github.io/RcloneExplorer/img/browser.png">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="img/logo.png">
+<link rel="apple-touch-icon" href="img/logo.png">
 <style>
 :root {
   --bg: #0A0A0A; --surface: #121212; --card: #151515; --card-hover: #1B1B1B;
@@ -103,6 +114,10 @@ section { padding: 72px 0; }
 code { font-family: "Cascadia Mono", Consolas, monospace; font-size: .92em; background: var(--tint);
   padding: 1px 6px; border-radius: 6px; }
 
+.faq { max-width: 820px; margin: 0 auto; display: grid; gap: 12px; }
+.faq details { background: var(--card); border: 1px solid var(--stroke); border-radius: 14px; padding: 16px 20px; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq details p { margin: 10px 0 0; color: var(--text2); font-size: 15.5px; }
 .docs { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
 .doc { display: block; background: var(--card); border: 1px solid var(--stroke); border-radius: 16px; padding: 22px;
   color: var(--text); }
@@ -144,7 +159,29 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
   "url": "https://jackpison.github.io/RcloneExplorer/",
   "downloadUrl": "https://github.com/Jackpison/RcloneExplorer/releases/latest",
   "screenshot": "https://jackpison.github.io/RcloneExplorer/img/browser.png",
-  "author": { "@type": "Person", "name": "Jackpison", "url": "https://github.com/Jackpison" }
+  "author": { "@type": "Person", "name": "Jackpison", "url": "https://github.com/Jackpison" },
+  "sameAs": ["https://github.com/Jackpison/RcloneExplorer"],
+  "isBasedOn": { "@type": "SoftwareApplication", "name": "Rclone Browser", "url": "https://github.com/mmozeiko/RcloneBrowser" },
+  "softwareHelp": { "@type": "CreativeWork", "url": "https://jackpison.github.io/RcloneExplorer/Rclone-Explorer-Guide.pdf" },
+  "featureList": ["Browse 70+ cloud storage services with tabs", "Pause and resume transfers", "Mirror folders across clouds with a check before syncing", "Scheduled tasks", "Mount remotes as drives", "Stream media", "Light and dark themes", "Portable mode", "Updates itself with checksum-verified downloads"]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Is Rclone Explorer the same as Rclone Browser?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Rclone Explorer is the continuation of Rclone Browser (by mmozeiko, DinCahill and kapitainsky) under a new name, with a new design and many new features. Settings and saved tasks of Rclone Browser are picked up automatically." } },
+    { "@type": "Question", "name": "Is Rclone Explorer free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is free and open source under the MIT license, with no account, no telemetry and no ads." } },
+    { "@type": "Question", "name": "Do I need to install rclone separately?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. The Windows and Linux downloads include rclone and keep it up to date. Your existing rclone remotes appear automatically." } },
+    { "@type": "Question", "name": "Which cloud services does it support?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Every storage type rclone supports: Google Drive, OneDrive, Dropbox, pCloud, Koofr, Filen, Amazon S3, Backblaze B2, SFTP, WebDAV, encrypted remotes and more than 70 others." } },
+    { "@type": "Question", "name": "Does Rclone Explorer work on Linux?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is available as an AppImage for 64-bit Linux and works on Ubuntu, Fedora, Debian, Mint, Arch, openSUSE and others." } }
+  ]
 }
 </script>
 </head>
@@ -157,6 +194,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
       <a href="#mirror">Mirror</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#start">Get started</a>
+      <a href="#faq">FAQ</a>
       <a href="#docs">Docs</a>
       <a href="https://github.com/Jackpison/RcloneExplorer">GitHub</a>
     </nav>
@@ -199,7 +237,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
   <section id="features">
     <div class="wrap">
       <div class="section-title"><span class="pill">Features</span><h2>Everything you need</h2>
-        <p>All the power of rclone in a graphical interface as comfortable as File Explorer.</p></div>
+        <p>All the power of rclone in a graphical interface as comfortable as File Explorer. Everything Rclone Browser did, and much more.</p></div>
       <div class="grid">
       <article class="card">
         <div class="card-icon"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true">
@@ -328,9 +366,22 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
       <div class="section-title"><span class="pill">Get started</span><h2>Up and running in a minute</h2></div>
       <div class="steps">
         <div class="step"><h3>Download</h3><p>Get the latest version for your system from the <a href="https://github.com/Jackpison/RcloneExplorer/releases/latest">releases page</a>.</p></div>
-        <div class="step"><h3>Windows</h3><p>Run the installer (no administrator rights needed), or extract the portable zip anywhere and run <code>Rclone Explorer.exe</code>. If Windows warns about an unknown app, choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
+        <div class="step"><h3>Windows</h3><p>Run the installer (it installs for you, no administrator rights needed), or extract the portable zip anywhere and run <code>Rclone Explorer.exe</code>. If Windows warns about an unknown app, choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
         <div class="step"><h3>Linux</h3><p>Make the AppImage executable (<code>chmod +x</code>) and run it. Works on Ubuntu, Fedora, Debian, Mint, Arch and more.</p></div>
-        <div class="step"><h3>Connect</h3><p>Your rclone remotes appear automatically, or click <b>New remote</b> to add one.</p></div>
+        <div class="step"><h3>Connect</h3><p>Your rclone remotes appear automatically, or click <b>New remote</b> to add one. Coming from Rclone Browser? Your settings and saved tasks come along.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-title"><span class="pill">FAQ</span><h2>Questions and answers</h2></div>
+      <div class="faq">
+        <details><summary>Is Rclone Explorer the same as Rclone Browser?</summary><p>Yes. Rclone Explorer is the continuation of <a href="https://github.com/mmozeiko/RcloneBrowser">Rclone Browser</a> (by mmozeiko, DinCahill and kapitainsky) under a new name, with a new design and many new features such as mirrors, schedules and tabs. Settings and saved tasks of Rclone Browser are picked up automatically.</p></details>
+        <details><summary>Is it free?</summary><p>Yes. It is free and open source under the MIT license, with no account, no telemetry and no ads.</p></details>
+        <details><summary>Do I need to install rclone separately?</summary><p>No. The Windows and Linux downloads include <a href="https://rclone.org/">rclone</a> and keep it up to date. Your existing rclone remotes appear automatically.</p></details>
+        <details><summary>Which cloud services does it support?</summary><p>Every storage type rclone supports: Google Drive, OneDrive, Dropbox, pCloud, Koofr, Filen, Amazon S3, Backblaze B2, SFTP, WebDAV, encrypted remotes and more than 70 others.</p></details>
+        <details><summary>Does it work on Linux?</summary><p>Yes. It is available as an AppImage for 64-bit Linux and works on Ubuntu, Fedora, Debian, Mint, Arch, openSUSE and others.</p></details>
       </div>
     </div>
   </section>
@@ -350,7 +401,7 @@ footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space
 
 <footer>
   <div class="wrap">
-    <span>© 2026 <a href="https://github.com/Jackpison">Jackpison</a> · MIT License · Based on the original by <a href="https://github.com/mmozeiko/RcloneBrowser">Martins Mozeiko</a></span>
+    <span>© 2026 <a href="https://github.com/Jackpison">Jackpison</a> · MIT License · Formerly Rclone Browser, based on the original by <a href="https://github.com/mmozeiko/RcloneBrowser">Martins Mozeiko</a></span>
     <span>Powered by <a href="https://rclone.org/">rclone</a></span>
   </div>
 </footer>

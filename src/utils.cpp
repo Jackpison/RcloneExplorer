@@ -133,6 +133,12 @@ QString ShadowIniPath(const QString &ini) {
         return d;
       }
     }
+    // neither exists: a new folder of this run, which only this user can open
+    // (a fixed name in the shared temp folder could be created by anyone)
+    static QTemporaryDir own(QDir(QDir::tempPath()).filePath("rclone-explorer-XXXXXX"));
+    if (own.isValid()) {
+      return own.path();
+    }
 #endif
     return QDir::tempPath();
   }();
@@ -415,10 +421,11 @@ void SetKnownRemoteNames(const QStringList &names) {
   gKnownRemotesSet = true;
 }
 
-void ListRemoteNames(QObject *context,
-                     const std::function<void(const QStringList &)> &done) {
+void ListRemoteNames(
+    QObject *context,
+    const std::function<void(const QStringList &names, const QString &error)> &done) {
   if (gKnownRemotesSet) {
-    done(gKnownRemotes); // no rclone start, so dialogs open instantly
+    done(gKnownRemotes, QString()); // no rclone start, so dialogs open instantly
     return;
   }
   // Ask rclone without waiting: the window keeps working meanwhile.
@@ -428,16 +435,23 @@ void ListRemoteNames(QObject *context,
   p->setArguments(QStringList() << "listremotes" << GetRcloneConf());
   p->setProcessChannelMode(QProcess::SeparateChannels);
   auto answered = std::make_shared<bool>(false);
-  auto answer = [done, answered](const QStringList &names) {
+  auto answer = [done, answered](const QStringList &names, const QString &error) {
     if (!*answered) {
       *answered = true;
-      done(names);
+      done(names, error);
     }
   };
   QObject::connect(p, &QProcess::finished, context,
                    [p, answer](int code, QProcess::ExitStatus status) {
                      QStringList names;
-                     if (status == QProcess::NormalExit && code == 0) {
+                     QString error;
+                     if (status != QProcess::NormalExit || code != 0) {
+                       // rclone's own last message, else it was stopped (no answer in time)
+                       const QStringList lines = QString::fromUtf8(p->readAllStandardError())
+                                                     .split('\n', Qt::SkipEmptyParts);
+                       error = lines.isEmpty() ? QObject::tr("rclone did not answer in time.")
+                                               : lines.last().trimmed();
+                     } else {
                        for (const QString &line : QString::fromUtf8(
                                 p->readAllStandardOutput()).split('\n')) {
                          if (!line.trimmed().isEmpty()) {
@@ -446,13 +460,13 @@ void ListRemoteNames(QObject *context,
                        }
                      }
                      p->deleteLater();
-                     answer(names);
+                     answer(names, error);
                    });
   QObject::connect(p, &QProcess::errorOccurred, context,
                    [p, answer](QProcess::ProcessError e) {
                      if (e == QProcess::FailedToStart) {
                        p->deleteLater();
-                       answer({});
+                       answer({}, QObject::tr("rclone could not be started."));
                      }
                    });
   QTimer::singleShot(10000, p, [p]() { p->kill(); });

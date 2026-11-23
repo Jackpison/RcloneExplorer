@@ -298,7 +298,10 @@ MainWindow::MainWindow() {
     }
     JobOptions *jo = item->GetData();
     if (!Theme::confirm(this, tr("Delete task"),
-                        tr("Delete the task \u201C%1\u201D?").arg(jo->description),
+                        tr("Delete the task \u201C%1\u201D?")
+                            .arg(jo->description.isEmpty()
+                                     ? jo->source + QString::fromUtf8(" \u2192 ") + jo->dest
+                                     : jo->description),
                         tr("Its schedule is removed too. Files are not touched."),
                         tr("Delete"), tr("Cancel"))) {
       return;
@@ -721,6 +724,12 @@ bool MainWindow::getConfigPassword(QProcess *p) {
 }
 
 bool MainWindow::canClose() {
+  if (mAppUpdater && mAppUpdater->isInstalling()) {
+    // quitting now would leave half the files of each version
+    QMessageBox::information(this, tr("Rclone Explorer update"),
+                             tr("The update is being installed. This takes a moment."));
+    return false;
+  }
   if (mJobCount == 0) {
     return true;
   }
@@ -962,6 +971,9 @@ void MainWindow::editSelectedTask() {
   auto selection = ui.tasksListWidget->selectionModel()->currentIndex();
   JobOptionsListWidgetItem *item = static_cast<JobOptionsListWidgetItem *>(
       ui.tasksListWidget->currentItem());
+  if (!item) {
+    return; // nothing selected (a double-click on empty space, a shortcut)
+  }
   JobOptions *jo = item->GetData();
   bool isDownload = (jo->jobType == JobOptions::Download);
   QString remote = isDownload ? jo->source : jo->dest;

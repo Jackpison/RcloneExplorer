@@ -93,7 +93,7 @@ signals:
   void drop(const QDir &path, const QModelIndex &parent);
   // rclone could not list a folder; what was shown of it is kept
   void loadFailed(const QString &folder, const QString &error);
-  void loadSucceeded();
+  void loadSucceeded(const QString &folder); // "remote:path", as above
 
 private:
   Item *mRoot;

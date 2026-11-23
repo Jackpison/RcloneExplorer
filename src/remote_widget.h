@@ -27,6 +27,7 @@ signals:
 private:
   Ui::RemoteWidget ui;
   QLabel *mTypeLabel = nullptr;
+  QString mLoadErrorFolder;
   QLabel *mLoadError = nullptr;
   QLineEdit *mFilter = nullptr;
   QTimer *mFilterTimer = nullptr; // coalesces typing and model updates

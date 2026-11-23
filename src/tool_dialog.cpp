@@ -21,7 +21,7 @@ ToolDialog::ToolDialog(Tool tool, const QString &source, QWidget *parent)
     auto *names = new QStringListModel(mOther);
     auto *completer = new QCompleter(names, mOther);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
-    ListRemoteNames(names, [names](const QStringList &remotes) {
+    ListRemoteNames(names, [names](const QStringList &remotes, const QString &) {
       names->setStringList(remotes);
     });
     mOther->setCompleter(completer);

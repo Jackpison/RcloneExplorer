@@ -144,7 +144,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
     model->refresh(index);
   });
 
@@ -154,7 +158,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     if (!model->isFolder(index)) {
       index = index.parent();
@@ -191,7 +199,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -224,7 +236,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -256,7 +272,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -314,7 +334,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -334,7 +358,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
     QString path = model->path(index).path();
 
     bool streamConfirmed =
@@ -366,7 +394,11 @@ QString root = isLocal ? "/" : QString();
     settings->setValue("Settings/driveShared", checked);
     ui.checkBoxShared->setChecked(checked);
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
     QModelIndex top = index;
     while (!model->isTopLevel(top)) {
       top = top.parent();
@@ -383,7 +415,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -408,7 +444,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     if (!model->isFolder(index)) {
       index = index.parent();
@@ -432,7 +472,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
     QDir path = model->path(index);
 
     TransferDialog t(true, false, remote, path, model->isFolder(index), this);
@@ -451,7 +495,11 @@ QString root = isLocal ? "/" : QString();
     bool driveShared = ui.checkBoxShared->checkState();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -477,7 +525,11 @@ QString root = isLocal ? "/" : QString();
     bool driveShared = ui.checkBoxShared->checkState();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
 
     QString path = model->path(index).path();
     QString pathMsg = isLocal ? QDir::toNativeSeparators(path) : path;
@@ -502,7 +554,11 @@ QString root = isLocal ? "/" : QString();
     (driveShared ? settings->setValue("Settings/driveShared", Qt::Checked)
                  : settings->setValue("Settings/driveShared", Qt::Unchecked));
 
-    QModelIndex index = ui.tree->selectionModel()->selectedRows().front();
+    const QModelIndexList picked = ui.tree->selectionModel()->selectedRows();
+    if (picked.isEmpty()) {
+      return; // the item went away (deleted, or its folder was reloaded)
+    }
+    QModelIndex index = picked.front();
     QDir path = model->path(index);
     ExportDialog e(remote, path, this);
     if (e.exec() == QDialog::Accepted) {
@@ -736,10 +792,17 @@ void RemoteWidget::buildFluentUi(ItemModel *model, const QString &remote,
   v->insertWidget(1, mLoadError);
   QObject::connect(model, &ItemModel::loadFailed, this,
                    [this](const QString &folder, const QString &error) {
+                     mLoadErrorFolder = folder;
                      mLoadError->setText(tr("Could not open %1: %2").arg(folder, error));
                      mLoadError->show();
                    });
-  QObject::connect(model, &ItemModel::loadSucceeded, mLoadError, &QWidget::hide);
+  // only a new listing of that same folder clears it (another folder's
+  // listing says nothing about it)
+  QObject::connect(model, &ItemModel::loadSucceeded, this, [this](const QString &folder) {
+    if (folder == mLoadErrorFolder) {
+      mLoadError->hide();
+    }
+  });
 
   // ---- command bar
   struct A { QAction *a; const char *icon; QString text; };
@@ -1244,6 +1307,7 @@ void RemoteWidget::applyIconSize(int px) {
 
 void RemoteWidget::showFolderInGrid(const QModelIndex &folder, ItemModel *model) {
   mGrid->setRootIndex(folder);
+  if (mLoadError) mLoadError->hide(); // about the folder shown before (a new failure shows again)
   for (int r = 0; r < model->rowCount(folder); ++r) {
     mGrid->setRowHidden(r, false);
   }

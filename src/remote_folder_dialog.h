@@ -24,7 +24,7 @@ private:
   QPushButton *mOk = nullptr;
   QList<QProcess *> mRunning;
 
-  void showRemotes(const QStringList &remotes, const QString &start);
+  void showRemotes(const QStringList &remotes, const QString &error, const QString &start);
   void setRemote();
   void load(QTreeWidgetItem *item);
   void stopLoading();

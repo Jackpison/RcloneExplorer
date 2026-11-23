@@ -524,7 +524,7 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
                       error.isEmpty() ? tr("rclone could not list it.") : error);
       return;
     }
-    emit loadSucceeded();
+    emit loadSucceeded(mRemote + ":" + parent->path.path());
     for (const auto &e : entries) {
       Item *child = new Item();
       child->parent = parent;
@@ -567,15 +567,29 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
       }
       names.insert(item->name);
     }
-    if (ambiguous) {
-      for (int i = 0; i < parent->childs.count(); i++) {
-        if (parent->childs[i] != loading) {
-          emit beginRemoveRows(parentIndex, i, i);
-          delete parent->childs.takeAt(i);
-          emit endRemoveRows();
-          i--;
+    // Removes the rows `gone` picks, a run of neighbours at a time: one by
+    // one took minutes in a folder of tens of thousands of files, with the
+    // window frozen meanwhile.
+    auto removeRows = [this, &parentIndex, parent](const std::function<bool(Item *)> &gone) {
+      for (int end = parent->childs.count(); end > 0;) {
+        if (!gone(parent->childs[end - 1])) {
+          --end;
+          continue;
         }
+        int first = end - 1;
+        while (first > 0 && gone(parent->childs[first - 1])) {
+          --first;
+        }
+        emit beginRemoveRows(parentIndex, first, end - 1);
+        qDeleteAll(parent->childs.begin() + first, parent->childs.begin() + end);
+        parent->childs.erase(parent->childs.begin() + first, parent->childs.begin() + end);
+        emit endRemoveRows();
+        end = first;
       }
+    };
+
+    if (ambiguous) {
+      removeRows([loading](Item *item) { return item != loading; });
       existing.clear();
     }
 
@@ -607,15 +621,9 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
 
     qDeleteAll(*cache);
 
-    for (int i = 0; i < parent->childs.count(); i++) {
-      if (parent->childs[i] == loading ||
-          existing.contains(parent->childs[i]->name)) {
-        emit beginRemoveRows(parentIndex, i, i);
-        delete parent->childs.takeAt(i);
-        emit endRemoveRows();
-        i--;
-      }
-    }
+    removeRows([loading, &existing](Item *item) {
+      return item == loading || existing.contains(item->name);
+    });
 
     if (!todo.isEmpty()) {
       modified = true;

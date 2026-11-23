@@ -12,7 +12,7 @@
 
 ## Features
 
-Rclone Explorer gives rclone a full graphical interface, so you can manage cloud files without the command line:
+Rclone Explorer (formerly Rclone Browser) gives rclone a full graphical interface, so you can manage cloud files without the command line. Everything Rclone Browser did, and much more:
 
 - **Modern design** in black and gold or warm light, with a one-click **light / dark** switch next to the app name: the new theme spreads in a circle from the button
 - **All your clouds in one place**: Google Drive, OneDrive, Dropbox, pCloud, S3, SFTP, encrypted remotes and every other rclone storage type, using your existing rclone configuration. Logos for 34 popular services are included; you can [add your own](docs/remote-icons.md).
@@ -62,8 +62,10 @@ Files the source removed or replaced are kept in `_SyncTrash/<date>/` on each co
 
 Two downloads on the [latest release](../../releases/latest), the same app:
 
-- **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Choose **Install for me only** (the default: no administrator rights, into `%LOCALAPPDATA%\Programs\Rclone Explorer`, updates without prompts) or **Install for all users** (into `C:\Program Files\Rclone Explorer`, with an administrator prompt, also for updates). Start menu entry and uninstaller either way; settings live in your user profile.
-- **Portable:** `RcloneExplorer-<version>-windows-x64-portable.zip` (up to 5.4.2: `RcloneExplorer-<version>-windows-x64.zip`). Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
+- **Installer:** `RcloneExplorer-<version>-windows-x64-setup.exe`. Installs for your user, with no administrator rights and no questions, into `%LOCALAPPDATA%\Programs\Rclone Explorer`, with a Start menu entry and an uninstaller; updates run without prompts. To install for everyone on the PC (into `C:\Program Files\Rclone Explorer`, with an administrator prompt), run it as `RcloneExplorer-<version>-windows-x64-setup.exe /ALLUSERS`. Settings live in your user profile either way.
+- **Portable:** `RcloneExplorer-<version>-windows-x64-portable.zip`. Extract it to any folder (even a USB stick) and run `Rclone Explorer.exe`. Everything stays in that folder.
+
+Coming from 5.4.2 portable? It cannot update itself to 5.4.4 (the download was renamed): download the portable zip once by hand, as described below.
 
 Windows may show "Windows protected your PC" because the app is not code-signed: click **More info**, then **Run anyway**.
 
@@ -91,6 +93,9 @@ Works on most distributions (Ubuntu, Fedora, Debian, Mint, Arch, openSUSE…). I
 Your existing rclone remotes appear automatically on both systems. If you have none yet, click **New remote** on the Home page (or **+** next to *Remotes* in the sidebar) to set one up with rclone's assistant. The **[user guide](docs/Rclone-Explorer-Guide.pdf)** explains every feature in detail.
 
 ## Upgrading from Rclone Browser (4.x and older)
+
+Rclone Explorer is the new name of Rclone Browser, so your settings and saved tasks carry over.
+
 
 - **Windows, portable:** extract the new zip to a new folder, then copy your old `RcloneBrowser.ini` (4.x) or `RcloneExplorer.ini` (5.0), and `tasks.bin`, next to `Rclone Explorer.exe`. The settings are picked up automatically on the first start; the old file stays untouched as a backup.
 - **Windows, not portable (no ini file):** nothing to do, settings are kept.
@@ -133,6 +138,8 @@ Your existing rclone remotes appear automatically on both systems. If you have n
 - rclone updates are HTTPS-only, verified against rclone's SHA-256 checksums, size-limited and test-run before installation.
 - rclone and media players are started without a shell, so file names cannot inject commands.
 - The Windows build enables Control Flow Guard, CET shadow-stack compatibility, ASLR and DEP.
+- Settings, saved tasks and mirrors are written in place with a complete copy kept beside them until done, so a crash or a full disk cannot lose them.
+- To report a security problem, see [SECURITY.md](SECURITY.md).
 - Releases are built by GitHub Actions from this repository with every action and build tool pinned to an exact version and checksum; each release publishes SHA-256 checksums. Both packages are launched in a self-test before publishing.
 
 ## Code signing policy

@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.4.4] - unreleased
+
+### Changed
+-   **The installer no longer asks "for me or for all users"**: it installs for your user (no administrator rights). To install for everyone, run the setup with `/ALLUSERS`. A copy installed for all users with 5.4.3 keeps updating there
+-   **Windows downloads are just two files**: `-portable.zip` and `-setup.exe`. The zip under its old name (`-windows-x64.zip`) is no longer published, so **the portable 5.4.2 cannot update itself to this version**: download the portable zip once by hand
+-   A folder that cannot be listed (offline, an expired login) keeps what was shown and says what went wrong in a red strip, instead of looking empty
+-   Deleting a saved task asks first, like every other delete
+-   After deleting a file, the next file is selected instead of the folder above
+-   Big folders reload much faster: rows that disappeared were removed one at a time, freezing the window for tens of thousands of files
+-   Picking a remote folder and the remote suggestions in Compare, Copy to… and Bisync no longer wait for rclone with the window frozen
+-   `SECURITY.md` explains how to report a security problem privately
+
+### Fixed
+-   **Quitting with several jobs running stopped only every other one** properly; the rest were killed, which on Linux could leave a broken mount behind
+-   **Closing an old mirror card on the Transfers page could disrupt a mirror run in progress** (a copy marked as failed, a second sync into the same folder)
+-   **Saved tasks were not saved safely**: a crash or a full disk at the wrong moment lost all of them. They are now saved like mirrors, and a damaged file keeps the tasks before the damage (a copy is kept as `tasks.bin.damaged`)
+-   **Two copies of the AppImage could run at once**, so schedules and mirrors ran twice. On Linux the "one at a time" lock is now per user
+-   Crash: Rename, Mount, Download and the other file buttons crashed when the item they pointed at had just been deleted or reloaded
+-   Changed sizes and dates sometimes did not show after a refresh
+-   **Updates**: *Keep running* was ignored when a scheduled task started during the download; Cancel did not work while unpacking (also for rclone updates); the window froze while the portable version copied its files; the checksum is now taken from the saved file and a full disk is reported; *Update now* during an update check no longer hangs on "Preparing…"; one failure shows one message; files a new version no longer has are removed; the app cannot be closed halfway through swapping files
+-   Cancelling a transfer or stream, and the end of a transfer (the sleep lock), no longer make the window wait
+-   The Flatpak could keep the computer awake after transfers stopped and started again quickly
+-   Security: in portable mode on Linux, the working copy of the settings sat in the shared temp folder, where another user could plant settings (including which rclone runs). It is now in a folder of your own
+-   File names with `<` or `&` could show as formatted text on mount and stream cards and in tooltips
+
+### Tests
+-   `test_safe_file`: saving in place with a complete copy beside it, an interrupted earlier save, an unwritable folder, Scoop's hard links
+-   `test_app_update`: files a new version no longer has are put aside, and come back when the update fails
+-   The release workflow refuses a tag that does not match `VERSION`
+
 ## [5.4.3] - 2026-11-14
 
 ### Added

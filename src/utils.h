@@ -48,9 +48,11 @@ unsigned int compareVersion(std::string, std::string);
 // colon ("drive:"), as `rclone listremotes` prints them. Uses the list the
 // main window keeps up to date and then calls `done` right away; before that
 // list exists it asks rclone and calls `done` later (an empty list if rclone
-// cannot be run). Nothing is called once `context` is gone.
-void ListRemoteNames(QObject *context,
-                     const std::function<void(const QStringList &)> &done);
+// cannot be run, with `error` saying why). Nothing is called once `context`
+// is gone.
+void ListRemoteNames(
+    QObject *context,
+    const std::function<void(const QStringList &names, const QString &error)> &done);
 void SetKnownRemoteNames(const QStringList &names); // plain names, no ':'
 
 // A tooltip that shows `text` exactly: Qt would read a file name such as

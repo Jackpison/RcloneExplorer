@@ -19,6 +19,8 @@ public:
   static bool canInstall();
 
   bool isBusy() const { return mBusy; }
+  // files are being swapped right now (cannot be stopped halfway)
+  bool isInstalling() const { return mInstalling; }
   void check();
   void install(const AppUpdate::Release &release);
   void cancel();
