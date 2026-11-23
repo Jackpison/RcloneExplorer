@@ -14,16 +14,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Built and deployed in separate jobs, as in GitHub's own Pages workflow:
+  # deploying in the same job can look for the upload before GitHub lists it.
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      pages: read # configure-pages reads the site's settings
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,5 +40,16 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
